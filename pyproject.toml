@@ -1,0 +1,195 @@
+[project]
+name = "scrim-bot"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "beautifulsoup4>=4.13.5",
+    "fire>=0.7.1",
+    "google-adk>=1.11.0",
+    "google-genai>=1.31.0",
+    "ipykernel>=6.30.1",
+    "kloak>=2.0.8a2",
+    "nicegui>=2.23.3",
+    "pydantic>=2.11.7",
+    "typst>=0.13.5",
+    "sec-edgar-downloader>=5.0.3",
+]
+authors = [
+    { name = "Damon Streat", email = "dj.streat@knexus.ai" },
+    { name = "Alexander Williams", email = "alexander.williams@knexus.ai"}
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "ruff>=0.12.9",
+    "ty>=0.0.1a19",
+]
+
+# [project.scripts]
+# dev = "adk web --port 8501"
+# deploy = "deployment/deploy.py"
+
+[project.gui-scripts]
+vv_chat = "chat_app.main:main"
+
+[tool.uv]
+package = false
+
+
+[tools.uv.sources]
+kloak = [{index="gitlab"}]
+
+[[tool.uv.index]]
+name = "gitlab"
+url = "https://gitlab.knexusresearch.com/api/v4/projects/339/packages/pypi/simple"
+
+
+[tool.ruff]
+line-length = 88
+
+target-version = "py313"
+
+# Enable Flake's "E" and "F" codes by default.
+lint.select = [
+    "A", # flake8-builtins
+    "E", # pycodestyle Error
+    "W", # pycodestyle Warning
+    "T20", #flake8-print
+    "COM", # Trailing commas
+    "FA", # Flake8-future-annotations (Make sure we use future annoations instead of forward references for classes)
+    "UP", # Pyupgrade ( Makes sure we aren't using depreciated functions/ using things like list[] instead of typing.List[]
+    "C4", # flake8-comprehensions
+    "D", # pydocstyle
+    "I", # isort
+    "PT", #Pytest
+    "TID252", # Use relative imports
+    "F", #Pyflakes
+    "B", # Flake8-bugbear
+    "NPY", # Numpy-specific rules
+    "RET", #flake8-return
+    "PL", # pylint
+    "PERF", # perflint
+    "ANN", # flake8-annoations
+    "ICN", # Esnures we use "np", "shapely.geometry as geo", etc.
+    "ARG", #flake8-unused-arguments
+    #    "PTH", # flake8-use-pathlib
+    "N", # Pep8-naming,
+    "DTZ", # flake8-datetime
+    "ISC", # flake8-implicit-str-concat
+    "INP", # flake8-no-pep420
+    "PIE", # flake8-pie
+    "ERA", # Eradicate
+    "TRY", # Tryceratops
+    "RUF",
+    # We should think about this:
+    #        "C90" # complexity
+
+
+]
+
+lint.extend-ignore = [
+    "E731", # turn lambda into function
+    #    "SIM102", # Use a single if instead of nested ifs
+    #    "SIM114", # Combine if using or
+    "D100", # Missing docstring in public module
+    "D101", # Missing docstring in public class
+    "D104", # Missing docstring in public package
+    "D203", #no-blank-line-before-class
+    "D205", # 1 blank line required between summary line and description
+    "D400", # First line should end with a period
+    "D401", # First line of docstring should be in imperative mood.
+    "D404", # First word should not be "This"
+    "D415", #  First line should end with a period, question mark, or exclamation point
+    "D211", # one-blank-line-before-class
+    "D212", # multi-line-summary-first-line
+    "D105", # Docstrings on magic methods
+    "ANN003", # missing annotation for **kwargs
+    "ANN002", # missing annotation for *args
+    #    "SIM108",
+    "ANN401", # Disallow typing.Any
+    # Recommended by ruff to disable when using ruff-format
+    "W191", # tab-identation
+    "E111", # indentation with invalid multiple
+    "E114", # indentation with invalid multiple comment
+    "E117", # over-indented
+    "D206", # indent with spaces
+    "D300", # triple single quotes
+    "Q000", # bad quotes inline string
+    "Q001", # bad quotes multiline string
+    "Q002", # bad quotes docstring
+    "Q003", # avoidable escaped quote
+    "COM812", # missing trailing comma
+    "COM819", # prohibited trailing comma
+    "ISC001", # single line implicit string concatenation
+    "ISC002", # multi line implicit string concatenation
+
+    "PLR0913", # too many variables in a function
+    "PERF203", # tr except within a loop incurs performance overhead
+
+    "D106", # Missing doc string in public nested class.
+    "F401", # relative imports
+
+    # We should think about these
+    "PLC041", # Sometimes useful not to load all dependencies until/unless you need them, especially for scripts
+    "PLR2004", # Magic value used in comparision, replace with constant.
+    "PLW0603", # Using the global statement to update `static_cols` is discouraged
+    "PLR0915", # Too many statements
+    "PLR0912", # too many branches
+    "TRY003", # Don't do long exception messages
+    "TRY002", # Create your own exception
+    "B005", # strip() with multiple characters
+    "PTH123", #use pathlib
+]
+
+
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "venv",
+    ".pytest_cache",
+    ".vscode",
+    ".idea",
+    ".ruff_cache",
+    "kloak/util/logger.py",
+    "example.py",
+    "test_data.py",
+    "tests"
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+
+# This section is crucial for setuptools to find packages in `src`
+[tool.setuptools.packages.find]
+where = ["src"] # Look for packages inside the 'src' directory
+include = ["knexus_vendor_vetting_agents_demo*"] # Include packages starting with this name
+
+[build-system]
+requires = ["uv_build>=0.8.11,<0.9.0"]
+build-backend = "uv_build"
