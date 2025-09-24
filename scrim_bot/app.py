@@ -1,17 +1,18 @@
 import asyncio
 from argparse import ArgumentParser, Namespace
 
-from google.genai import types
-from kloak import Kloak
 from kloak.agent import visualize_agents
-from kloak.data import SupportedModels
-from kloak.data.config import KnexusGenConfig
 from kloak.data.history_management import AllHistoryManagement
-from kloak.util import logger
 
 from scrim_bot.agents import AssistantAgent
-
+from scrim_bot.kloak_util import get_kloak
 from scrim_bot.utils.enums import LITE, FLASH, PRO
+
+
+# Logging Setup
+from kloak.util import logger
+from scrim_bot.utils.logger_patch import patch_kloak_loggers_for_utf8
+patch_kloak_loggers_for_utf8()
 
 
 def parse_args() -> Namespace:
@@ -27,24 +28,11 @@ def main(args: Namespace) -> None:
     """Main entrypoint"""
     history_manager = AllHistoryManagement()
     # Initialize Kloak
-    kloak = Kloak(
-        vertex_project="vendorvettingrit",
-        default_model=PRO,
-        enabled_models=[
-            LITE,
-            FLASH,
-            PRO
-        ],
-        default_config=KnexusGenConfig(
-            temperature=0.7,
-            top_p=0.95,
-            tools=[types.Tool(google_search=types.GoogleSearch())],
-        ),
-    )
+    kloak = get_kloak()
 
     # Initialize the Orchestrator Agent
     assistant = AssistantAgent(
-        kloak, PRO, history_manager=history_manager
+        kloak, FLASH, history_manager=history_manager
     )
 
     # Visualize the agent graph if requested

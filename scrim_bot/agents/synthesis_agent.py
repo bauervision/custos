@@ -33,9 +33,6 @@ class SynthesisAgent(Agent[str]):
             case _:
                 return SYNTHESIS_INSTRUCTIONS.format(**self.research_reports)
 
-    @property
-    def response_schema(self) -> Schema:
-        return ResearchReport.to_schema_obj()
 
     @override
     def chat(self, research_reports: dict[str, str] | None = None, **kwargs):
@@ -48,6 +45,3 @@ class SynthesisAgent(Agent[str]):
     ):
         self.research_reports = research_reports
         return super().async_chat(**kwargs)
-
-    def _process_response(self, response) -> ResearchReport:
-        return ResearchReport.from_dict(response.to_schema_permissive(ResearchReport))
