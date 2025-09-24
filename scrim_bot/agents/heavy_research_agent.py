@@ -10,6 +10,7 @@ from kloak.util import logger
 from scrim_bot.agents.director_agent import DirectorAgent
 from scrim_bot.agents.research_agent import ResearchAgent
 from scrim_bot.agents.synthesis_agent import SynthesisAgent
+from scrim_bot.babel.babel_agent import BabelDocSearchAgent
 
 
 class HeavyResearchAgent(Agent[str]):
@@ -37,6 +38,9 @@ class HeavyResearchAgent(Agent[str]):
         )
 
         # Various subagents.
+        self.babel_search_agent: BabelDocSearchAgent = BabelDocSearchAgent(
+            agent_name="babel_doc_search_agent"
+        )
         self.director: DirectorAgent = DirectorAgent(
             kloak, agent_model, history_manager=history_manager
         )
@@ -45,14 +49,20 @@ class HeavyResearchAgent(Agent[str]):
         )
 
         self.research_agents: list[ResearchAgent] = [
-            ResearchAgent(self._kloak, "finance_researcher", agent_model, "finance"),
-            ResearchAgent(
-                self._kloak, "political_researcher", agent_model, "political"
+            ResearchAgent(self._kloak, "finance_researcher", agent_model, "finance",
+                          babel_doc_search_agent=self.babel_search_agent
             ),
             ResearchAgent(
-                self._kloak, "capability_researcher", agent_model, "capability"
+                self._kloak, "political_researcher", agent_model, "political",
+                babel_doc_search_agent=self.babel_search_agent
             ),
-            ResearchAgent(self._kloak, "security_researcher", agent_model, "security"),
+            ResearchAgent(
+                self._kloak, "capability_researcher", agent_model, "capability",
+                babel_doc_search_agent=self.babel_search_agent
+            ),
+            ResearchAgent(self._kloak, "security_researcher", agent_model, "security",
+                          babel_doc_search_agent=self.babel_search_agent
+            ),
         ]
 
     @property
@@ -68,7 +78,7 @@ class HeavyResearchAgent(Agent[str]):
         return [self.director, *self.research_agents, self.synthesis]
 
     def chat(self, prompt: str | None = None, **kwargs) -> str:
-        """Synchronus sequential chat workflow for heavy research agent."""
+        """Synchronous sequential chat workflow for heavy research agent."""
         # 1. Decompose the research task
         research_plan = self.director.chat(prompt)
         logger.info(f"Research plan: {pformat(research_plan)}")
@@ -81,21 +91,23 @@ class HeavyResearchAgent(Agent[str]):
         self._history_manager.add_history(
             [
                 {
-                    "user": self.director.agent_name,
-                    "query": str(research_query),
+                    "role": "model", # NOTE TO SELF: ONLY VALID ROLES ARE 'user' AND 'model'
+                    "content": str(research_query),
                 },
             ]
         )
 
         # 2. Execute research in parallel
         research_results = {}
+        logger.info("Enacting Research Plan")
         for agent in self.research_agents:
             agent.set_research_query(research_query[agent.research_type])
+            logger.debug(f"Starting Research for {agent.research_type}")
             research_results[agent.research_type] = agent.chat(prompt="")
             self._history_manager.add_history(
                 [
                     {
-                        "user": agent.agent_name,
+                        "role": "model",
                         "content": f"Research Report for {agent.research_type}: {research_results[agent.research_type]}",
                     }
                 ]
@@ -112,12 +124,12 @@ class HeavyResearchAgent(Agent[str]):
         self._history_manager.add_history(
             [
                 {
-                    "user": self.synthesis.agent_name,
-                    "content": f"Report for {final_report.research_report}\n\nCitations: {final_report.citations}",
+                    "role": "model",
+                    "content": f"Report for {final_report}",
                 }
             ]
         )
-        return final_report.research_report
+        return final_report
 
     async def async_chat(self, prompt: str | None = None, **kwargs) -> str:
         """Synchronus sequential chat workflow for heavy research agent."""

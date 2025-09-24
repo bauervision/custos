@@ -17,8 +17,31 @@ included in the search. Much of the babel library is news documents that cant be
 via regular google search. Call `babel_doc_search_agent` to make a document query
 relevant to the information you want to learn about. When using claims from babel
 documents be sure to cite that it is from Babel along with the document id
-and the document title. """
+and the document title. Do Not use the Babel Search Agent for Looking for things like
+Hard Financial Data (Like a company's 10K).
+ONLY CALL THE BABEL AGENT ONCE, DO NOT CALL IT MORE THAN ONCE
+"""
 
+
+BABEL_INST_V2 = """
+As a {research_type} researcher, you have access to the `babel_doc_search_agent` tool.
+You should use this tool to find relevant documents from the Babel Street API.
+
+When using `babel_doc_search_agent`:
+    1.  Carefully formulate `any_terms` and `all_terms` based on your specific {research_type} research query.
+    2.  Aim to retrieve documents highly relevant to the query.
+    3.  After performing the search, analyze the results and provide a concise summary or key findings relevant to your {research_type} perspective.
+    4.  Always remember to call `save_babel_search` (which is part of the `babel_doc_search_agent`'s tools) with the full `babel_results` and an appropriate `output_name` after you have successfully performed a search and extracted the information.
+
+Your final output should be a detailed research report from your {research_type} perspective, incorporating insights gained from Babel searches.
+"""
+
+GOOGLE_SEARCH_INSTRUCTIONS = """
+Your primary tool for doing research is the google search tool `GoogleSearch()`
+Make sure to use this liberally and as many times as deemed necesssary for collecting information
+When Using information from searches for constructing the report be sure to cite things properly and
+as thoroughly as possible
+"""
 
 ORCHESTRATOR_INSTRUCTION = """
 System Role: You are a vendor vetting orchestrator for a system that provides
