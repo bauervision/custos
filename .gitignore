@@ -10,6 +10,7 @@
 ### Python template
 # Byte-compiled / optimized / DLL files
 __pycache__/
+**/__pycache__/*
 *__pycache__/
 *.py[cod]
 *$py.class
@@ -96,6 +97,7 @@ celerybeat-schedule
 # virtualenv
 venv/
 ENV/
+.venv/
 
 # Spyder project settings
 .spyderproject
@@ -110,7 +112,6 @@ ENV/
 [Ll]ib
 [Ll]ib64
 [Ll]ocal
-[Ss]cripts
 pyvenv.cfg
 .venv
 pip-selfcheck.json
@@ -202,3 +203,4 @@ fabric.properties
 *.prof
 /kloak/evaluation/afloat/afloat_results/
 /kloak/evaluation/afloat/afloat_eval_metrics/
+/babel_results

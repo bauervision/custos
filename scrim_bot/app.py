@@ -1,17 +1,19 @@
 import asyncio
 from argparse import ArgumentParser, Namespace
 
+from google.genai import types
 from kloak.agent import visualize_agents
+from kloak.data import KnexusGenConfig
 from kloak.data.history_management import AllHistoryManagement
-
-from scrim_bot.agents import AssistantAgent
-from scrim_bot.kloak_util import get_kloak
-from scrim_bot.utils.enums import LITE, FLASH, PRO
-
 
 # Logging Setup
 from kloak.util import logger
+
+from scrim_bot.agents import AssistantAgent
+from scrim_bot.kloak_util import get_kloak
+from scrim_bot.utils.enums import FLASH, LITE, PRO
 from scrim_bot.utils.logger_patch import patch_kloak_loggers_for_utf8
+
 patch_kloak_loggers_for_utf8()
 
 
@@ -31,9 +33,7 @@ def main(args: Namespace) -> None:
     kloak = get_kloak()
 
     # Initialize the Orchestrator Agent
-    assistant = AssistantAgent(
-        kloak, FLASH, history_manager=history_manager
-    )
+    assistant = AssistantAgent(kloak, FLASH, history_manager=history_manager)
 
     # Visualize the agent graph if requested
     if args.visualize:

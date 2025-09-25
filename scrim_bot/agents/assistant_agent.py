@@ -1,6 +1,7 @@
+from google.genai import types
 from kloak import Kloak
 from kloak.agent import Agent
-from kloak.data import KnexResponse, Schema, SupportedModels
+from kloak.data import KnexResponse, Schema, SupportedModels, KnexusGenConfig
 from kloak.data.history_management import HistoryManagement
 
 from scrim_bot.prompts import ASSISTANT_INSTRUCTIONS
