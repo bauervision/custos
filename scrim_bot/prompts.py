@@ -37,11 +37,21 @@ Your final output should be a detailed research report from your {research_type}
 """
 
 GOOGLE_SEARCH_INSTRUCTIONS = """
-Your primary tool for doing research is the google search tool `GoogleSearch()`
+Your primary tool for doing research is the `google_search_agent`. Ask the agent to search as many things as you like
 Make sure to use this liberally and as many times as deemed necesssary for collecting information
 When Using information from searches for constructing the report be sure to cite things properly and
 as thoroughly as possible
 """
+
+# Instructions for the actual google search agent
+GOOGLE_SEARCH_AGENT_INS = """
+    You're a specialist in Google Search. Use the GoogleSearch() tool for answering questions.
+    Perform searches on the asked for information and when returning information
+    be as specific as possible and include exact citations for key claims when able to. Always return the websites used
+    and format the claims to provide precise citations for the information returned.
+    ALL INFORMATION from searches should be accompanied by a citation.
+"""
+
 
 ORCHESTRATOR_INSTRUCTION = """
 System Role: You are a vendor vetting orchestrator for a system that provides
@@ -114,6 +124,7 @@ Your query:
 {finance_query}
 
 """
+    + GOOGLE_SEARCH_INSTRUCTIONS
     + TEN_K_INSTRUCTION_ADDON
     + BABEL_AGENT_INSTRUCTION_ADDON
 )
@@ -146,6 +157,7 @@ Your query:
 {political_query}
 
 """
+    + GOOGLE_SEARCH_INSTRUCTIONS
     + TEN_K_INSTRUCTION_ADDON
     + BABEL_AGENT_INSTRUCTION_ADDON
 )
@@ -178,6 +190,7 @@ Your query:
 {capability_query}
 
 """
+    + GOOGLE_SEARCH_INSTRUCTIONS
     + TEN_K_INSTRUCTION_ADDON
     + BABEL_AGENT_INSTRUCTION_ADDON
 )
@@ -210,6 +223,7 @@ Your query:
 {security_query}
 
 """
+    + GOOGLE_SEARCH_INSTRUCTIONS
     + TEN_K_INSTRUCTION_ADDON
     + BABEL_AGENT_INSTRUCTION_ADDON
 )

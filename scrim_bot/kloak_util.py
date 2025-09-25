@@ -5,6 +5,7 @@ from kloak.data import KnexusGenConfig
 from scrim_bot.utils.enums import LITE, FLASH, PRO, GCP_PROJECT_ID
 
 _instance = None
+_ginstance = None
 
 
 def get_kloak():
@@ -21,7 +22,23 @@ def get_kloak():
         default_config=KnexusGenConfig(
             temperature=0.7,
             top_p=0.95,
-            tools=[types.Tool(google_search=types.GoogleSearch())],
         ),
     )
     return _instance
+
+
+# An instance of Kloak with Google Search Enabled, do not use with other tools
+def get_gkloak():
+    global _ginstance
+    if _ginstance is None:
+        _ginstance = Kloak(
+        vertex_project=GCP_PROJECT_ID,
+        default_model=FLASH,
+        enabled_models=[
+            LITE,
+            FLASH,
+            PRO
+        ],
+        default_config=KnexusGenConfig(tools=[types.GoogleSearch()])
+    )
+    return _ginstance

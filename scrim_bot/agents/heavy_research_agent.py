@@ -8,9 +8,11 @@ from kloak.data.history_management.history_management import HistoryManagement
 from kloak.util import logger
 
 from scrim_bot.agents.director_agent import DirectorAgent
+from scrim_bot.agents.gsearch_agent import GoogleSearchAgent
 from scrim_bot.agents.research_agent import ResearchAgent
 from scrim_bot.agents.synthesis_agent import SynthesisAgent
 from scrim_bot.babel.babel_agent import BabelDocSearchAgent
+from scrim_bot.utils.enums import FLASH
 
 
 class HeavyResearchAgent(Agent[str]):
@@ -41,6 +43,9 @@ class HeavyResearchAgent(Agent[str]):
         self.babel_search_agent: BabelDocSearchAgent = BabelDocSearchAgent(
             agent_name="babel_doc_search_agent"
         )
+        self.google_search_agent = GoogleSearchAgent(
+            agent_name="google_search_agent", agent_model=FLASH
+        )
         self.director: DirectorAgent = DirectorAgent(
             kloak, agent_model, history_manager=history_manager
         )
@@ -50,18 +55,22 @@ class HeavyResearchAgent(Agent[str]):
 
         self.research_agents: list[ResearchAgent] = [
             ResearchAgent(self._kloak, "finance_researcher", agent_model, "finance",
-                          babel_doc_search_agent=self.babel_search_agent
+                          babel_doc_search_agent=self.babel_search_agent,
+                          google_search_agent=self.google_search_agent
             ),
             ResearchAgent(
                 self._kloak, "political_researcher", agent_model, "political",
-                babel_doc_search_agent=self.babel_search_agent
+                babel_doc_search_agent=self.babel_search_agent,
+                google_search_agent=self.google_search_agent
             ),
             ResearchAgent(
                 self._kloak, "capability_researcher", agent_model, "capability",
-                babel_doc_search_agent=self.babel_search_agent
+                babel_doc_search_agent=self.babel_search_agent,
+                google_search_agent=self.google_search_agent
             ),
             ResearchAgent(self._kloak, "security_researcher", agent_model, "security",
-                          babel_doc_search_agent=self.babel_search_agent
+                          babel_doc_search_agent=self.babel_search_agent,
+                          google_search_agent=self.google_search_agent
             ),
         ]
 

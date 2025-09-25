@@ -20,16 +20,18 @@ class ResearchAgent(Agent[str]):
         agent_name: str,
         agent_model: SupportedModels,
         research_type: str,
-        babel_doc_search_agent: Agent | None = None
+        babel_doc_search_agent: Agent | None = None,
+        google_search_agent: Agent | None = None
     ):
         super().__init__(kloak=kloak, agent_name=agent_name, agent_model=agent_model)
         self.research_type = research_type
         self.research_query: str | None = None
         self.babel_doc_search_agent = babel_doc_search_agent
+        self.google_search_agent = google_search_agent
 
     @property
     def agents(self) -> list[Agent]: # New property to expose babel_search_agent
-        return [self.babel_doc_search_agent]
+        return [self.babel_doc_search_agent, self.google_search_agent]
 
     @property
     def agent_description(self) -> str:
