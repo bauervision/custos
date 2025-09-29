@@ -14,7 +14,6 @@ class GoogleSearchAgent(Agent):
 
     def __init__(self, agent_name, agent_model):
         super().__init__(kloak=get_gkloak(), agent_name=agent_name, agent_model=agent_model)
-        print(self._config)
 
     @property
     def agent_description(self) -> str:
@@ -27,7 +26,6 @@ class GoogleSearchAgent(Agent):
     # @property
     # def tools(self) -> list[KnexTool]:
     #     return [types.GoogleSearch()]
-
 
     def chat(self, prompt: str | None = None, **kwargs) -> ResponseType | list[ResponseType]:
         """Chat with the agent."""
