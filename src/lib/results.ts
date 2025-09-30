@@ -4,6 +4,7 @@ export type RunData = {
   vendors: VendorAgg[];
   counts: Record<string, number>;
   seed?: string;
+  aoi?: any;
   createdAt: number;
 };
 

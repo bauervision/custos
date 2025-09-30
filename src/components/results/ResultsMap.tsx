@@ -1,15 +1,25 @@
 "use client";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import {
   MapContainer,
   TileLayer,
   CircleMarker,
   Tooltip,
+  GeoJSON,
   useMap,
 } from "react-leaflet";
 import type { VendorAgg } from "@/components/loading/VendorCard";
 import { useSelection } from "@/state/selection";
 import { patchLeafletIcons } from "@/lib/leaflet";
+import L from "leaflet";
+
+type Props = {
+  vendors: VendorAgg[];
+  aoi?: {
+    bounds?: { south: number; west: number; north: number; east: number };
+    geojson?: any;
+  } | null;
+};
 
 const COUNTRY_CENTER: Record<string, [number, number]> = {
   "South Africa": [-28.48, 24.67],
@@ -34,18 +44,30 @@ function jitter([lat, lon]: [number, number], seed: string): [number, number] {
   return [lat + a * 0.4, lon + b * 0.4];
 }
 
-function FitBounds({ points }: { points: [number, number][] }) {
+function FitAll({
+  points,
+  aoi,
+}: {
+  points: [number, number][];
+  aoi?: Props["aoi"];
+}) {
   const map = useMap();
   useEffect(() => {
-    if (!points.length) return;
-    const bounds = points as any;
-    // @ts-ignore
-    map.fitBounds(bounds, { padding: [40, 40] });
-  }, [points, map]);
+    const bounds = L.latLngBounds(
+      points.map(([lat, lng]) => L.latLng(lat, lng))
+    );
+    if (aoi?.bounds) {
+      const sw = L.latLng(aoi.bounds.south, aoi.bounds.west);
+      const ne = L.latLng(aoi.bounds.north, aoi.bounds.east);
+      bounds.extend(sw);
+      bounds.extend(ne);
+    }
+    if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
+  }, [points, aoi, map]);
   return null;
 }
 
-export default function ResultsMap({ vendors }: { vendors: VendorAgg[] }) {
+export default function ResultsMap({ vendors, aoi }: Props) {
   const { hoverVendor, selectedVendor } = useSelection();
   useEffect(() => {
     patchLeafletIcons();
@@ -72,7 +94,22 @@ export default function ResultsMap({ vendors }: { vendors: VendorAgg[] }) {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution="&copy; OpenStreetMap"
       />
-      <FitBounds points={pts} />
+      <FitAll points={pts} aoi={aoi} />
+
+      {/* AOI overlay if present */}
+      {aoi?.geojson && (
+        <GeoJSON
+          data={aoi.geojson}
+          style={{
+            color: "rgba(0,255,200,0.9)",
+            weight: 2,
+            fillColor: "rgba(0,255,200,0.2)",
+            fillOpacity: 0.25,
+          }}
+        />
+      )}
+
+      {/* Vendor pins */}
       {positions.map(({ name, pos }) => {
         const isHover = name === hoverVendor || name === selectedVendor;
         return (

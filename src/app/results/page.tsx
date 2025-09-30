@@ -50,10 +50,21 @@ export default function ResultsPage() {
     );
   }
 
+  const aoi = data?.aoi;
+
   // Full-height split: adjust calc() if your header/footer change
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
       <h1 className="text-2xl font-semibold mb-4">Vendor Landscape</h1>
+
+      {aoi && (
+        <div className="rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-1.5 text-xs text-emerald-200">
+          AOI active • centered at{" "}
+          {aoi?.center
+            ? `${aoi.center.lat.toFixed(2)}, ${aoi.center.lon.toFixed(2)}`
+            : "—"}
+        </div>
+      )}
 
       <div className="grid grid-cols-[380px_1fr] gap-6 h-[calc(100vh-160px)]">
         {/* Left: list (independent scroll) */}
@@ -86,7 +97,7 @@ export default function ResultsPage() {
 
         {/* Right: map fills remaining space */}
         <div className="h-full">
-          <ResultsMap vendors={sorted} />
+          <ResultsMap vendors={sorted} aoi={aoi} />
         </div>
       </div>
 
