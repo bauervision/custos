@@ -95,10 +95,19 @@ export default function LoadingPage() {
   }, [counts, tick]);
 
   const pct = Math.round((elapsed / TOTAL_MS) * 100);
+  const isDone = pct >= 100;
 
   useEffect(() => {
     if (pct >= 100 && !savedRef.current) {
       savedRef.current = true;
+
+      // pull AOI if present
+      let aoi: any = null;
+      try {
+        const raw = sessionStorage.getItem("custos:aoi");
+        if (raw) aoi = JSON.parse(raw);
+      } catch {}
+
       const vendors = Array.from(vendorMapRef.current.values());
       const payload = {
         vendors,
@@ -121,16 +130,55 @@ export default function LoadingPage() {
         Streaming early signals while the full report builds.
       </p>
 
-      {/* Glow progress bar with sparks (styles live in globals.css) */}
-      <div className="progress-wrap">
-        <div className="progress-bar" style={{ width: `${pct}%` }} />
-        <div className="spark-emitter" style={{ left: `${pct}%` }}>
-          <span className="spark" style={{ left: 0, top: -2 }} />
-          <span className="spark" style={{ left: 2, top: 3 }} />
-          <span className="spark" style={{ left: -3, top: 1 }} />
+      {/* Ready CTA or Progress */}
+      {isDone ? (
+        <div className="ready-cta" role="status" aria-live="polite">
+          <div className="ready-ring grid place-items-center">
+            {/* checkmark */}
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              className="relative z-10"
+            >
+              <path
+                d="M20 7L9 18l-5-5"
+                fill="none"
+                stroke="black"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+          <div>
+            <div className="text-base font-semibold">Report ready</div>
+            <div className="text-xs text-white/70">
+              View the vendor landscape, map & recommendations.
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <a href="/results" className="cta-primary">
+              View Results
+            </a>
+            <a href="/dashboard" className="cta-secondary">
+              Summary
+            </a>
+          </div>
         </div>
-      </div>
-      <div className="mt-3 text-sm text-white/60">{pct}%</div>
+      ) : (
+        <>
+          <div className="progress-wrap">
+            <div className="progress-bar" style={{ width: `${pct}%` }} />
+            <div className="spark-emitter" style={{ left: `${pct}%` }}>
+              <span className="spark" style={{ left: 0, top: -2 }} />
+              <span className="spark" style={{ left: 2, top: 3 }} />
+              <span className="spark" style={{ left: -3, top: 1 }} />
+            </div>
+          </div>
+          <div className="mt-3 text-sm text-white/60">{pct}%</div>
+        </>
+      )}
 
       {/* Top row: Radial Heatmap + Word Cloud */}
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -157,17 +205,6 @@ export default function LoadingPage() {
           </div>
         </div>
       </div>
-
-      {pct >= 100 && (
-        <div className="mt-10">
-          <a
-            href="/results"
-            className="rounded-lg bg-white/10 px-4 py-2 hover:bg-white/20"
-          >
-            View Results
-          </a>
-        </div>
-      )}
     </div>
   );
 }
