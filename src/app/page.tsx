@@ -1,103 +1,230 @@
-import Image from "next/image";
+"use client";
+import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
+import KeywordMarquee from "@/components/KeywordMarquee";
 
-export default function Home() {
+const EXAMPLE = "I need to source raw earth materials from South Africa";
+const KEYWORDS_ROW_A = [
+  "logistics",
+  "tariffs",
+  "ethics",
+  "bankruptcy",
+  "outsourcing",
+  "permits",
+  "traceability",
+  "ESG",
+  "sanctions",
+  "chain-of-custody",
+  "supply risk",
+  "lead times",
+  "customs",
+  "geopolitics",
+  "export controls",
+];
+const KEYWORDS_ROW_B = [
+  "diamond",
+  "mercury",
+  "cobalt",
+  "rare earths",
+  "platinum",
+  "nickel",
+  "conflict zones",
+  "labor",
+  "CEO turnover",
+  "strike risk",
+  "port delays",
+  "currency",
+  "duty",
+  "HS codes",
+  "environmental impact",
+];
+
+export default function HomePage() {
+  const [query, setQuery] = useState(EXAMPLE);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Quick UX sugar: press "/" to focus the prompt
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "/" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="relative overflow-hidden">
+      {/* Soft background glows */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 -left-24 h-80 w-80 rounded-full bg-cyan-500/20 blur-3xl" />
+        <div className="absolute -bottom-20 -right-16 h-96 w-96 rounded-full bg-emerald-500/20 blur-3xl" />
+        <div className="absolute left-1/2 top-1/2 h-80 w-[52rem] -translate-x-1/2 -translate-y-1/2 rounded-[999px] bg-white/5 blur-2xl" />
+      </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      {/* Hero */}
+      <section className="relative bg-grid">
+        <div className="mx-auto max-w-6xl px-4 py-16 lg:py-24">
+          <motion.h1
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-balance text-4xl font-semibold tracking-tight sm:text-5xl"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+            From{" "}
+            <span className="bg-gradient-to-r from-cyan-300 to-emerald-300 bg-clip-text text-transparent">
+              Origin
+            </span>{" "}
+            to{" "}
+            <span className="bg-gradient-to-r from-emerald-300 to-cyan-300 bg-clip-text text-transparent">
+              Outcome
+            </span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08, duration: 0.5 }}
+            className="mt-4 max-w-2xl text-white/70"
+          >
+            Custos AI is the guardian of supply chain integrity. From the moment
+            materials are sourced to their final deployment, Custos provides
+            AI-powered oversight, regional risk analysis, and vendor
+            accountability. Built for agencies that demand transparency,
+            security, and strategic foresight.
+          </motion.p>
+
+          {/* Prompt box */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12, duration: 0.5 }}
+            className="mt-8 rounded-2xl border border-white/10 bg-white/[0.04] p-3 shadow-[0_10px_50px_rgba(0,0,0,0.25)] backdrop-blur"
+          >
+            <textarea
+              ref={inputRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              rows={4}
+              className="w-full resize-none rounded-xl bg-black/30 p-4 outline-none ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-cyan-400"
+              placeholder='e.g., "I need material X from region Y"'
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-xs text-white/50">
+                Press{" "}
+                <kbd className="rounded border border-white/20 bg-white/10 px-1.5 py-0.5">
+                  /
+                </kbd>{" "}
+                to focus
+              </div>
+              <div className="flex gap-2">
+                <a
+                  href={`/loading?seed=${encodeURIComponent(query)}`}
+                  className="rounded-lg bg-gradient-to-r from-cyan-400/90 to-emerald-400/90 px-4 py-2 text-black font-semibold hover:from-cyan-300 hover:to-emerald-300"
+                >
+                  Run Report
+                </a>
+                <a
+                  href="/map"
+                  className="rounded-lg border border-white/20 px-4 py-2 text-white/90 hover:bg-white/10"
+                >
+                  Start with Map →
+                </a>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Stats row */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="mt-6 grid gap-3 sm:grid-cols-3"
           >
-            Read our docs
-          </a>
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+              <div className="text-xs uppercase tracking-wider text-white/50">
+                Scan speed
+              </div>
+              <div className="mt-1 text-xl font-semibold">
+                ~1m demo • ~10m live
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+              <div className="text-xs uppercase tracking-wider text-white/50">
+                Risk lenses
+              </div>
+              <div className="mt-1 text-xl font-semibold">
+                Finance · Ethics · Logistics
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+              <div className="text-xs uppercase tracking-wider text-white/50">
+                Outcome
+              </div>
+              <div className="mt-1 text-xl font-semibold">
+                Prescriptive picks & map
+              </div>
+            </div>
+          </motion.div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {/* Keyword marquee (double row, opposite directions) */}
+        <div className="border-y border-white/10 bg-black/30 backdrop-blur">
+          <div className="mx-auto max-w-6xl px-4 py-4">
+            <KeywordMarquee items={KEYWORDS_ROW_A} />
+            <KeywordMarquee items={KEYWORDS_ROW_B} reverse className="mt-2" />
+          </div>
+        </div>
+      </section>
+
+      {/* Secondary section: two-path entry */}
+      <section className="relative">
+        <div className="mx-auto max-w-6xl px-4 py-12 lg:py-16">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <a
+              href="/loading"
+              className="group rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-cyan-300/40 hover:bg-white/[0.05]"
+            >
+              <div className="text-sm text-cyan-300/90">Prompt Mode</div>
+              <div className="mt-1 text-xl font-semibold">
+                Natural Language → Vendor Landscape
+              </div>
+              <p className="mt-2 text-white/70">
+                Type your need. We’ll stream emerging companies, keywords, and
+                early risk signals while the report builds.
+              </p>
+              <div className="mt-4 text-sm text-white/70 group-hover:text-white/90">
+                Try it now →
+              </div>
+            </a>
+
+            <a
+              href="/map"
+              className="group rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-emerald-300/40 hover:bg-white/[0.05]"
+            >
+              <div className="text-sm text-emerald-300/90">Map Mode</div>
+              <div className="mt-1 text-xl font-semibold">
+                Pick a Region → Draw AOI
+              </div>
+              <p className="mt-2 text-white/70">
+                Start from geography. Draw your area of interest; add the
+                material. We’ll auto-zoom and highlight vendor pins.
+              </p>
+              <div className="mt-4 text-sm text-white/70 group-hover:text-white/90">
+                Open the map →
+              </div>
+            </a>
+          </div>
+
+          {/* Trust strip (text placeholders for demo) */}
+          <div className="mt-10 rounded-xl border border-white/10 bg-white/[0.02] p-4 text-center text-xs text-white/60">
+            Trusted by teams evaluating complex supply chains — ready to demo
+            for Google & Government stakeholders.
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

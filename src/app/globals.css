@@ -1,26 +1,121 @@
 @import "tailwindcss";
 
+/* Leaflet core + draw CSS */
+@import "leaflet/dist/leaflet.css";
+@import "leaflet-draw/dist/leaflet.draw.css";
+
+/* Basic page background to match a data viz vibe */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #0b0f14;
+  --fg: #e6edf3;
+}
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.bg-grid {
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    rgba(255, 255, 255, 0.06) 1px,
+    transparent 0
+  );
+  background-size: 28px 28px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Marquee animation for keyword ticker */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee {
+  overflow: hidden;
+  position: relative;
+}
+.marquee-track {
+  display: flex;
+  gap: 0.5rem;
+  width: max-content;
+  will-change: transform;
+  animation: marquee 28s linear infinite;
+}
+.marquee-track.reverse {
+  animation-direction: reverse;
+}
+
+/* Glow progress bar + spark emitter */
+.progress-wrap {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 255, 200, 0.9),
+    rgba(100, 255, 180, 0.9),
+    rgba(180, 255, 160, 0.9)
+  );
+  filter: drop-shadow(0 0 10px rgba(0, 255, 200, 0.5));
+  background-size: 200% 100%;
+  animation: progressShimmer 2.2s linear infinite;
+}
+@keyframes progressShimmer {
+  from {
+    background-position: 0% 0;
+  }
+  to {
+    background-position: 200% 0;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.spark-emitter {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.spark {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(0, 255, 200, 0.8) 60%,
+    rgba(0, 0, 0, 0) 70%
+  );
+  filter: drop-shadow(0 0 6px rgba(0, 255, 200, 0.7));
+  animation: sparkShoot 900ms ease-out infinite;
+}
+.spark:nth-child(2) {
+  animation-delay: 150ms;
+}
+.spark:nth-child(3) {
+  animation-delay: 300ms;
+}
+@keyframes sparkShoot {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  60% {
+    transform: translate(18px, -14px) scale(0.85);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(32px, -24px) scale(0.6);
+    opacity: 0;
+  }
 }
