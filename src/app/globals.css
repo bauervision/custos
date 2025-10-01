@@ -281,3 +281,22 @@ body {
   background-clip: text;
   color: transparent;
 }
+
+/* styles/globals.css */
+@keyframes prompt-pop {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+  30% {
+    transform: scale(1.015);
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.18);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+.animate-prompt-pop {
+  animation: prompt-pop 0.45s ease;
+}
