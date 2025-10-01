@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Knexus.Ai: Custos",
-  description: "From Origin to Outcome—Custos Watches",
+  title: "Knexus.Ai: Kustos",
+  description: "From Origin to Outcome—Kustos Watches",
 };
 
 export default function RootLayout({
@@ -35,7 +35,7 @@ export default function RootLayout({
               className="group inline-flex items-center gap-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
             >
               <span className="brand-custos" data-text="Custos">
-                Custos
+                Kustos
               </span>
             </a>
 
@@ -86,8 +86,8 @@ export default function RootLayout({
         <ChatWidget />
         <footer className="border-t border-white/10 px-4 py-6 text-xs text-white/60">
           <div className="mx-auto max-w-6xl">
-            Knexus.Ai © {new Date().getFullYear()} Custos: From Origin to
-            Outcome—Custos Watches
+            Knexus.Ai © {new Date().getFullYear()} Kustos: From Origin to
+            Outcome—Kustos Watches
           </div>
         </footer>
       </body>

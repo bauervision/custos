@@ -11,8 +11,7 @@ export type CategoryKey =
 export type CategoryDef = {
   key: CategoryKey;
   label: string;
-  /** Path data for a 24x24 icon (no JSX so this file can stay .ts) */
-  iconPath: string;
+  iconPath: string; // 24x24 path
 };
 
 export const CATEGORIES: CategoryDef[] = [
@@ -67,8 +66,45 @@ export const CATEGORY_PLACEHOLDER: Record<CategoryKey, string> = {
   other: "Describe what you need…",
 };
 
+// NEW: example prompts per category (stand-ins for demo)
+export const CATEGORY_EXAMPLES: Record<CategoryKey, string[]> = {
+  materials: [
+    "I need to source raw earth materials from South Africa",
+    "Find rare earth oxide suppliers within 500 km of Durban with export permits",
+    "Identify low-risk gold refiners in SADC with traceable chain-of-custody",
+  ],
+  tech: [
+    "Procure rugged LoRaWAN gateways for open-pit mines in Botswana",
+    "Edge AI cameras (IP67) for port operations in Cape Town",
+    "Ka-band satellite terminals from export-compliant vendors in South Africa",
+  ],
+  services: [
+    "Customs brokerage & pre-clearance for mining equipment into South Africa",
+    "Third-party ESG audit firms operating in Namibia and Botswana",
+    "Dangerous goods shipping services from Johannesburg to EU corridors",
+  ],
+  equipment: [
+    "Industrial centrifuges for mineral processing near Johannesburg",
+    "Drill rigs with in-country spares availability in Namibia",
+    "ISO 17025 lab assay equipment for ore testing in Gauteng",
+  ],
+  furniture: [
+    "ESD workbenches and lab stools for electronics assembly in Pretoria",
+    "Modular racking for a Durban warehouse (3m bays)",
+    "Cleanroom furniture for an ISO 7 lab in Cape Town",
+  ],
+  parts: [
+    "M3 stainless fasteners (A2-70) from ISO 9001 suppliers in Gauteng",
+    "Ceramic bearings stocked in South Africa (SKF-equivalent)",
+    "Hydraulic hose fittings (BSPP) vendors in the SADC region",
+  ],
+  other: [
+    "Secure data destruction for retired hardware in South Africa",
+    "Solar microgrid kits for remote operations in Northern Cape",
+    "Temporary workforce services for port logistics in Durban",
+  ],
+};
+
 export function getCategory(key: CategoryKey): CategoryDef {
-  const hit = CATEGORIES.find((c) => c.key === key);
-  if (!hit) return CATEGORIES[0];
-  return hit;
+  return CATEGORIES.find((c) => c.key === key) ?? CATEGORIES[0];
 }

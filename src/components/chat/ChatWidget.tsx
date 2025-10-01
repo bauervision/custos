@@ -8,7 +8,6 @@ export default function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [msgs, setMsgs] = useState<Message[]>(() => {
-    // restore across pages
     if (typeof window === "undefined") return [];
     try {
       const raw = localStorage.getItem("custos:chat");
@@ -17,6 +16,7 @@ export default function ChatWidget() {
       return [];
     }
   });
+
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -32,6 +32,16 @@ export default function ChatWidget() {
     });
   }, [open, msgs.length]);
 
+  // Close on ESC
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   async function send() {
     const text = input.trim();
     if (!text) return;
@@ -39,9 +49,7 @@ export default function ChatWidget() {
     const id = crypto.randomUUID();
     setMsgs((m) => [...m, { id, role: "user", text }]);
 
-    // ---- BACKEND HOOK ----
-    // If you add a real endpoint, post to /api/chat here and stream back tokens.
-    // For now, we reply with a tiny placeholder derived from the last run context, if present.
+    // --- demo reply stub (replace with /api/chat when ready) ---
     const run = (() => {
       try {
         return JSON.parse(sessionStorage.getItem("custos:run") ?? "null");
@@ -61,7 +69,7 @@ export default function ChatWidget() {
       : `No recent run found—try "Run Report" from the map.`;
 
     const reply = [
-      `Thanks — I'm here to help with Custos. ${summary}`,
+      `Thanks — I can help with Custos. ${summary}`,
       `Ask me to: filter by AOI, explain a vendor's score, or export a narrative.`,
     ].join(" ");
 
@@ -75,11 +83,12 @@ export default function ChatWidget() {
 
   return (
     <>
-      {/* Launcher */}
+      {/* Launcher button (always visible) */}
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label="Open AI chat"
-        className="fixed bottom-4 right-4 z-[100] rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 text-black shadow-lg hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 w-12 h-12 grid place-items-center"
+        aria-expanded={open}
+        className="fixed bottom-4 right-4 z-[10050] rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 text-black shadow-lg hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 w-12 h-12 grid place-items-center"
       >
         <svg width="22" height="22" viewBox="0 0 24 24">
           <path
@@ -89,9 +98,23 @@ export default function ChatWidget() {
         </svg>
       </button>
 
-      {/* Panel */}
+      {/* Backdrop overlay (click to close) */}
       {open && (
-        <div className="fixed bottom-20 right-4 z-[100] w-[360px] max-w-[calc(100vw-2rem)] rounded-2xl border border-white/10 bg-black/85 backdrop-blur shadow-2xl">
+        <button
+          aria-label="Close chat overlay"
+          onClick={() => setOpen(false)}
+          className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-sm"
+        />
+      )}
+
+      {/* Messages panel (centered above the bottom input) */}
+      {open && (
+        <div
+          className="fixed z-[10020] left-1/2 -translate-x-1/2 bottom-[136px] w-[min(92vw,800px)] max-h-[60vh]
+               rounded-2xl border border-white/10 bg-black/85 backdrop-blur shadow-2xl overflow-hidden"
+          role="dialog"
+          aria-label="Custos Assistant"
+        >
           <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
             <div className="text-sm font-semibold">Custos Assistant</div>
             <button
@@ -102,9 +125,10 @@ export default function ChatWidget() {
               ✕
             </button>
           </div>
+
           <div
             ref={listRef}
-            className="max-h-[50vh] overflow-auto px-3 py-2 space-y-2"
+            className="max-h-[calc(60vh-44px)] overflow-auto px-3 py-3 space-y-2"
           >
             {msgs.length === 0 && (
               <div className="text-xs text-white/60">
@@ -124,17 +148,34 @@ export default function ChatWidget() {
               </div>
             ))}
           </div>
-          <div className="flex items-center gap-2 p-2 border-t border-white/10">
-            <input
+        </div>
+      )}
+
+      {/* Docked input bar (big, centered at bottom) */}
+      {open && (
+        <div
+          className="fixed z-[10030] left-1/2 -translate-x-1/2 bottom-6 w-[min(92vw,800px)]"
+          role="group"
+          aria-label="Chat input"
+        >
+          <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-black/85 backdrop-blur p-2 shadow-xl">
+            <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => (e.key === "Enter" ? send() : null)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
               placeholder="Ask anything…"
-              className="flex-1 rounded-lg bg-white/5 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-400"
+              rows={1}
+              className="flex-1 resize-none max-h-32 rounded-xl bg-white/5 px-4 py-3 text-base outline-none ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-emerald-400"
             />
             <button
               onClick={send}
-              className="rounded-lg bg-white/10 px-3 py-2 text-sm hover:bg-white/20"
+              className="rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 px-4 py-3 text-sm font-semibold text-black hover:opacity-90 disabled:opacity-50"
+              disabled={!input.trim()}
             >
               Send
             </button>
