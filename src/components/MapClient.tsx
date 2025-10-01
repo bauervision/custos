@@ -7,6 +7,7 @@ import L from "leaflet";
 import "leaflet-draw";
 import { patchLeafletIcons } from "@/lib/leaflet";
 import { useRouter } from "next/navigation";
+import { DARK_TILE } from "@/lib/tiles";
 
 type AoiSummary = {
   type: "Polygon" | "Rectangle";
@@ -175,10 +176,7 @@ export default function MapClient() {
           worldCopyJump
         >
           {/* You can swap this tile for a simpler region style later */}
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution="&copy; OpenStreetMap"
-          />
+          <TileLayer url={DARK_TILE.url} attribution={DARK_TILE.attribution} />
           <DrawControls
             onChange={setAoi}
             setClearRef={(fn) => (clearRef.current = fn)}

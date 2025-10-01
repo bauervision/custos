@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import ChatWidget from "@/components/chat/ChatWidget";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -81,6 +82,8 @@ export default function RootLayout({
         </header>
 
         <main className="flex-1">{children}</main>
+
+        <ChatWidget />
         <footer className="border-t border-white/10 px-4 py-6 text-xs text-white/60">
           <div className="mx-auto max-w-6xl">
             Knexus.Ai © {new Date().getFullYear()} Custos: From Origin to

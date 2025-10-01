@@ -7,7 +7,10 @@ import VendorCard from "@/components/loading/VendorCard";
 import Donut from "@/components/dashboard/Donut";
 import { recommendationScore, riskFromBreakdown } from "@/lib/scoring";
 
+type BBox = { south: number; west: number; north: number; east: number };
+
 export default function DashboardPage() {
+  // --- HOOKS (always in the same order) ---
   const data = useMemo(() => loadLatestRun(), []);
   const [vendors, setVendors] = useState<VendorAgg[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -17,39 +20,24 @@ export default function DashboardPage() {
     if (data?.counts) setCounts(data.counts);
   }, [data]);
 
-  if (!vendors.length) {
-    return (
-      <div className="mx-auto max-w-4xl px-4 py-12">
-        <h1 className="text-2xl font-semibold mb-3">
-          Summary & Recommendations
-        </h1>
-        <p className="text-white/70">
-          No recent run found. Try{" "}
-          <a className="underline" href="/loading">
-            running a report
-          </a>{" "}
-          first.
-        </p>
-      </div>
-    );
-  }
+  const sorted = useMemo(() => {
+    return [...vendors].sort((a, b) => {
+      const ar = recommendationScore(riskFromBreakdown(a.breakdown));
+      const br = recommendationScore(riskFromBreakdown(b.breakdown));
+      return br - ar;
+    });
+  }, [vendors]);
 
-  const sorted = [...vendors].sort((a, b) => {
-    const ar = recommendationScore(riskFromBreakdown(a.breakdown));
-    const br = recommendationScore(riskFromBreakdown(b.breakdown));
-    return br - ar;
-  });
+  // --- Derived (no hooks below this point) ---
   const top3 = sorted.slice(0, 3);
 
-  // KPIs
   const totalVendors = vendors.length;
   const avgRisk = Math.round(
     vendors.reduce((s, v) => s + riskFromBreakdown(v.breakdown), 0) /
-      totalVendors
+      (totalVendors || 1)
   );
   const avgRec = 100 - avgRisk;
 
-  // global risk mix (sum of breakdowns across vendors)
   const mix = vendors.reduce(
     (m, v) => {
       m.finance += v.breakdown.finance;
@@ -59,10 +47,171 @@ export default function DashboardPage() {
     },
     { finance: 0, ethics: 0, logistics: 0 }
   );
+  const mixTotal = Math.max(1, mix.finance + mix.ethics + mix.logistics);
+  const pct = (n: number) => Math.round((n / mixTotal) * 100);
 
   const topKeywords = Object.entries(counts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10);
+
+  // AOI/meta from the saved run (if present)
+  const aoi = (data as any)?.aoi as
+    | { center?: { lat: number; lon: number }; bounds?: BBox }
+    | undefined;
+  const seedText = (data as any)?.seed as string | undefined;
+  const runDate = new Date((data?.createdAt ?? Date.now()) as number);
+
+  // --- Markdown report block you already had ---
+  const mdReport = useMemo(() => {
+    const pick = (v?: VendorAgg) =>
+      v ? `${v.name}${v.country ? ` (${v.country})` : ""}` : undefined;
+    const kwords = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([k, v]) => `${k} (×${v})`)
+      .join(", ");
+
+    return [
+      `# Custos Vendor Vetting Report`,
+      ``,
+      `**Run date:** ${runDate.toLocaleString()}${
+        seedText ? `  \n**Seed:** ${seedText}` : ""
+      }${
+        aoi?.center
+          ? `  \n**AOI Center:** ${aoi.center.lat.toFixed(
+              2
+            )}, ${aoi.center.lon.toFixed(2)}`
+          : ""
+      }`,
+      ``,
+      `## Executive Summary`,
+      `- Vendors surfaced: **${totalVendors}**`,
+      `- Average recommendation: **${avgRec}/100** (avg risk: ${avgRisk})`,
+      `- Top picks: ${
+        [pick(top3[0]), pick(top3[1]), pick(top3[2])]
+          .filter(Boolean)
+          .join(", ") || "—"
+      }`,
+      ``,
+      `## Risk Mix (aggregate)`,
+      `- Finance: ${mix.finance}`,
+      `- Ethics: ${mix.ethics}`,
+      `- Logistics: ${mix.logistics}`,
+      ``,
+      `## Key Signals`,
+      kwords ? `Top keywords: ${kwords}` : `No dominant keywords captured.`,
+      ``,
+      `## Prescriptive Recommendations`,
+      `1. Prioritize ${top3[0]?.name ?? "the top vendor"} and ${
+        top3[1]?.name ?? "the next pick"
+      } for immediate negotiation based on current scoring.`,
+      `2. Mitigate ethics exposure via third-party audit and require chain-of-custody attestations for award.`,
+      `3. Lock logistics SLAs to cap lead-time variance; pre-clear customs & HS codes for ${
+        top3[0]?.country ?? "target region"
+      }.`,
+      `4. Hedge financial risk on tariffs/currency where flagged during the run.`,
+    ].join("\n");
+  }, [
+    counts,
+    runDate,
+    seedText,
+    aoi,
+    totalVendors,
+    avgRec,
+    avgRisk,
+    mix,
+    top3,
+  ]);
+
+  // --- NEW: Comprehensive narrative (paragraph style) ---
+  const narrativeText = useMemo(() => {
+    const topKW = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([k]) => k);
+
+    const vendorLine = (v?: VendorAgg) => {
+      if (!v) return "";
+      const kw = (v.keywords || []).slice(0, 6);
+      const kwText = kw.length ? ` Key signals include ${kw.join(", ")}.` : "";
+      return `${v.name}${v.country ? ` (${v.country})` : ""}.${kwText}`;
+    };
+
+    const overview = [
+      `This report summarizes the vendor landscape generated by Custos on ${runDate.toLocaleDateString()}.`,
+      seedText ? `The analysis was seeded with: “${seedText}.”` : "",
+      aoi?.center
+        ? `An Area of Interest (AOI) was applied, centered near ${aoi.center.lat.toFixed(
+            2
+          )}, ${aoi.center.lon.toFixed(
+            2
+          )}, which constrained both the map and vendor list.`
+        : `No AOI filter was applied; results reflect the full dataset.`,
+      topKW.length
+        ? `Across all vendors, the most prominent signals observed were ${topKW.join(
+            ", "
+          )}.`
+        : `No dominant global signals were observed during this run.`,
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const financial = `Financial risk signals accounted for approximately ${pct(
+      mix.finance
+    )}% of the aggregate risk mix, suggesting that cost volatility, tariff exposure, or capital intensity are material factors to monitor.`;
+
+    const ethics = `Ethics-related risk signals contributed ~${pct(
+      mix.ethics
+    )}% of the overall profile. Where applicable, diligence should include labor standards, provenance/chain-of-custody, and regulatory compliance checks aligned to the target market.`;
+
+    const logistics = `Logistics risk signals comprised roughly ${pct(
+      mix.logistics
+    )}% of the mix. Lead-time variability, routing constraints, and customs considerations may affect schedule confidence and should be mitigated through SLAs and pre-clearance where possible.`;
+
+    const capability = [
+      `The top recommendations emerging from this run are:`,
+      top3[0] ? `1) ${vendorLine(top3[0])}` : "",
+      top3[1] ? `2) ${vendorLine(top3[1])}` : "",
+      top3[2] ? `3) ${vendorLine(top3[2])}` : "",
+      `These vendors scored favorably based on the blended recommendation score (lower aggregate risk corresponds to higher recommendation).`,
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const prescriptive = [
+      `Recommended actions:`,
+      `• Engage ${top3[0]?.name ?? "the top vendor"} and ${
+        top3[1]?.name ?? "the next pick"
+      } for commercial discussions focusing on scope, schedule, and pricing.`,
+      `• Institute third-party ethics audits and require chain-of-custody attestations for award decisions where relevant.`,
+      `• Lock logistics SLAs to cap lead-time variance; pre-clear customs and HS codes for ${
+        top3[0]?.country ?? "the target region"
+      }.`,
+      `• If finance signals are elevated, consider currency and tariff hedging instruments consistent with procurement policy.`,
+    ].join(" ");
+
+    const close = `Overall, this run surfaced ${totalVendors} vendors with an average recommendation of ${avgRec}/100 (avg risk ${avgRisk}). The findings should be revisited as new signals arrive or as the AOI and seed criteria evolve.`;
+
+    return {
+      overview,
+      financial,
+      ethics,
+      logistics,
+      capability,
+      prescriptive,
+      close,
+    };
+  }, [
+    counts,
+    mix,
+    aoi,
+    seedText,
+    runDate,
+    top3,
+    totalVendors,
+    avgRec,
+    avgRisk,
+  ]);
 
   function downloadJSON() {
     try {
@@ -83,6 +232,104 @@ export default function DashboardPage() {
     } catch {}
   }
 
+  function copyMarkdown() {
+    try {
+      navigator.clipboard.writeText(mdReport);
+    } catch {}
+  }
+
+  function downloadMarkdown() {
+    try {
+      const blob = new Blob([mdReport], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "custos-report.md";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {}
+  }
+
+  // NEW: copy/download handlers for the narrative
+  function copyNarrative() {
+    const t = [
+      "Comprehensive Vendor Narrative",
+      "",
+      narrativeText.overview,
+      "",
+      "Financial Stability Analysis",
+      narrativeText.financial,
+      "",
+      "Vulnerabilities & Threats",
+      narrativeText.ethics,
+      narrativeText.logistics,
+      "",
+      "Capability & Suitability",
+      narrativeText.capability,
+      "",
+      "Recommendations",
+      narrativeText.prescriptive,
+      "",
+      "Conclusion",
+      narrativeText.close,
+    ].join("\n");
+    try {
+      navigator.clipboard.writeText(t);
+    } catch {}
+  }
+
+  function downloadNarrative() {
+    const t = [
+      "Comprehensive Vendor Narrative",
+      "",
+      narrativeText.overview,
+      "",
+      "Financial Stability Analysis",
+      narrativeText.financial,
+      "",
+      "Vulnerabilities & Threats",
+      narrativeText.ethics,
+      narrativeText.logistics,
+      "",
+      "Capability & Suitability",
+      narrativeText.capability,
+      "",
+      "Recommendations",
+      narrativeText.prescriptive,
+      "",
+      "Conclusion",
+      narrativeText.close,
+    ].join("\n");
+    try {
+      const blob = new Blob([t], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "custos-narrative.txt";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {}
+  }
+
+  // Early return AFTER all hooks
+  if (!vendors.length) {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-12">
+        <h1 className="text-2xl font-semibold mb-3">
+          Summary & Recommendations
+        </h1>
+        <p className="text-white/70">
+          No recent run found. Try{" "}
+          <a className="underline" href="/loading">
+            running a report
+          </a>{" "}
+          first.
+        </p>
+      </div>
+    );
+  }
+
+  // --- RENDER ---
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="flex items-center justify-between gap-3">
@@ -189,6 +436,148 @@ export default function DashboardPage() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Existing: Full Text Report (Markdown summary + controls) */}
+      <div className="mt-10 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-sm font-medium text-white/80">
+            Full Text Report
+          </div>
+        </div>
+
+        <article className="prose prose-invert max-w-none mt-4">
+          <h2>Custos Vendor Vetting Report</h2>
+          <p>
+            <strong>Run date:</strong> {runDate.toLocaleString()}
+            <br />
+            {seedText && (
+              <>
+                <strong>Seed:</strong> {seedText}
+                <br />
+              </>
+            )}
+            {aoi?.center && (
+              <>
+                <strong>AOI Center:</strong> {aoi.center.lat.toFixed(2)},{" "}
+                {aoi.center.lon.toFixed(2)}
+              </>
+            )}
+          </p>
+
+          <h3>Executive Summary</h3>
+          <ul>
+            <li>
+              Vendors surfaced: <strong>{totalVendors}</strong>
+            </li>
+            <li>
+              Average recommendation: <strong>{avgRec}/100</strong> (avg risk:{" "}
+              {avgRisk})
+            </li>
+            <li>
+              Top picks:{" "}
+              {[top3[0]?.name, top3[1]?.name, top3[2]?.name]
+                .filter(Boolean)
+                .join(", ") || "—"}
+            </li>
+          </ul>
+
+          <h3>Risk Mix (aggregate)</h3>
+          <ul>
+            <li>Finance: {mix.finance}</li>
+            <li>Ethics: {mix.ethics}</li>
+            <li>Logistics: {mix.logistics}</li>
+          </ul>
+
+          <h3>Key Signals</h3>
+          <p>
+            {Object.keys(counts).length
+              ? Object.entries(counts)
+                  .sort((a, b) => b[1] - a[1])
+                  .slice(0, 10)
+                  .map(([k, v]) => `${k} (×${v})`)
+                  .join(", ")
+              : "No dominant keywords captured."}
+          </p>
+
+          <h3>Prescriptive Recommendations</h3>
+          <ol>
+            <li>
+              Prioritize <strong>{top3[0]?.name ?? "the top vendor"}</strong>{" "}
+              and <strong>{top3[1]?.name ?? "the next pick"}</strong> for
+              immediate negotiation.
+            </li>
+            <li>
+              Mitigate ethics exposure via third-party audit and require
+              chain-of-custody attestations for award.
+            </li>
+            <li>
+              Lock logistics SLAs to cap lead-time variance; pre-clear customs
+              &amp; HS codes for {top3[0]?.country ?? "target region"}.
+            </li>
+            <li>
+              Hedge financial risk on tariffs/currency where flagged during the
+              run.
+            </li>
+          </ol>
+
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={copyMarkdown}
+              className="rounded-lg border border-white/20 px-3 py-1.5 text-sm hover:bg-white/10"
+            >
+              Copy Markdown
+            </button>
+            <button
+              onClick={downloadMarkdown}
+              className="rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/20"
+            >
+              Download .md
+            </button>
+          </div>
+        </article>
+      </div>
+
+      {/* NEW: Comprehensive Narrative (paragraphs) */}
+      <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-sm font-medium text-white/80">
+            Comprehensive Narrative
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={copyNarrative}
+              className="rounded-lg border border-white/20 px-3 py-1.5 text-sm hover:bg-white/10"
+            >
+              Copy Text
+            </button>
+            <button
+              onClick={downloadNarrative}
+              className="rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/20"
+            >
+              Download .txt
+            </button>
+          </div>
+        </div>
+
+        <article className="prose prose-invert max-w-none mt-4">
+          <h3>Overview</h3>
+          <p>{narrativeText.overview}</p>
+
+          <h3>Financial Stability Analysis</h3>
+          <p>{narrativeText.financial}</p>
+
+          <h3>Vulnerabilities &amp; Threats</h3>
+          <p>{narrativeText.ethics}</p>
+          <p>{narrativeText.logistics}</p>
+
+          <h3>Capability &amp; Suitability</h3>
+          <p>{narrativeText.capability}</p>
+
+          <h3>Conclusion &amp; Next Steps</h3>
+          <p>{narrativeText.prescriptive}</p>
+          <p>{narrativeText.close}</p>
+        </article>
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ import type { VendorAgg } from "@/components/loading/VendorCard";
 import { useSelection } from "@/state/selection";
 import { patchLeafletIcons } from "@/lib/leaflet";
 import L from "leaflet";
+import { DARK_TILE } from "@/lib/tiles";
 
 type Props = {
   vendors: VendorAgg[];
@@ -203,10 +204,7 @@ export default function ResultsMap({ vendors, aoi }: Props) {
       zoom={2}
       worldCopyJump
     >
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution="&copy; OpenStreetMap"
-      />
+      <TileLayer url={DARK_TILE.url} attribution={DARK_TILE.attribution} />
       <FitAll points={pts} aoi={aoi} />
 
       {/* AOI overlay if present */}
