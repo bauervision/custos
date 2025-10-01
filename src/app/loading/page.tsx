@@ -10,8 +10,36 @@ import {
   recommendationScore,
   riskFromBreakdown,
 } from "@/lib/scoring";
+import { BBox } from "@/lib/aoi";
 
 const TOTAL_MS = 60_000;
+
+const COUNTRY_CENTER: Record<string, [number, number]> = {
+  "South Africa": [-28.48, 24.67],
+  Namibia: [-22.56, 17.08],
+  Botswana: [-22.33, 24.68],
+  Germany: [51.16, 10.45],
+  Singapore: [1.35, 103.82],
+  Norway: [60.47, 8.47],
+  Canada: [56.13, -106.35],
+  China: [35.86, 104.19],
+  UAE: [23.42, 53.85],
+};
+
+function normLon(lon: number): number {
+  let x = lon;
+  while (x <= -180) x += 360;
+  while (x > 180) x -= 360;
+  return x;
+}
+
+function inBbox(lat: number, lon: number, b: BBox): boolean {
+  const LON = normLon(lon),
+    W = normLon(b.west),
+    E = normLon(b.east);
+  const withinLon = W <= E ? LON >= W && LON <= E : LON >= W || LON <= E;
+  return lat >= b.south && lat <= b.north && withinLon;
+}
 
 export default function LoadingPage() {
   const [elapsed, setElapsed] = useState(0);
@@ -85,6 +113,15 @@ export default function LoadingPage() {
     };
   }, [seed]);
 
+  const aoi = useMemo(() => {
+    try {
+      const raw = sessionStorage.getItem("custos:aoi");
+      return raw ? (JSON.parse(raw) as { bounds?: BBox }) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const vendorsSorted: VendorAgg[] = useMemo(() => {
     const arr = Array.from(vendorMapRef.current.values());
     return arr.sort((a, b) => {
@@ -93,6 +130,18 @@ export default function LoadingPage() {
       return br - ar; // sort desc by recommendation
     });
   }, [counts, tick]);
+
+  const vendorsVisible = useMemo(() => {
+    const bounds = aoi?.bounds as BBox | undefined; // narrow once
+    if (!bounds) return vendorsSorted;
+
+    return vendorsSorted.filter((v) => {
+      const center = COUNTRY_CENTER[v.country];
+      if (!center) return false;
+      const [lat, lon] = center;
+      return inBbox(lat, lon, bounds); // now BBox, not possibly undefined
+    });
+  }, [vendorsSorted, aoi]);
 
   const pct = Math.round((elapsed / TOTAL_MS) * 100);
   const isDone = pct >= 100;
@@ -114,6 +163,7 @@ export default function LoadingPage() {
         counts,
         seed,
         createdAt: Date.now(),
+        aoi,
       };
       try {
         sessionStorage.setItem("custos:run", JSON.stringify(payload));
@@ -195,11 +245,11 @@ export default function LoadingPage() {
       {/* Scrollable vendor grid underneath (fills left→right, wraps) */}
       <div className="mt-8 rounded-xl border border-white/10">
         <div className="px-4 py-3 text-sm text-white/70 border-b border-white/10">
-          Live Vendor Results (sorted by recommendation)
+          Live Vendor Results (sorted by recommendation and AOI)
         </div>
         <div className="max-h-[420px] overflow-auto p-4">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {vendorsSorted.map((v) => (
+            {vendorsVisible.map((v) => (
               <VendorCard key={v.name} v={v} />
             ))}
           </div>

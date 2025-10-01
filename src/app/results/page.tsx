@@ -18,6 +18,35 @@ const ResultsMap = dynamic(() => import("@/components/results/ResultsMap"), {
   ),
 });
 
+type BBox = { south: number; west: number; north: number; east: number };
+
+function normLon(lon: number): number {
+  let x = lon;
+  while (x <= -180) x += 360;
+  while (x > 180) x -= 360;
+  return x;
+}
+function inBbox(lat: number, lon: number, b: BBox): boolean {
+  const LON = normLon(lon),
+    W = normLon(b.west),
+    E = normLon(b.east);
+  const withinLon = W <= E ? LON >= W && LON <= E : LON >= W || LON <= E;
+  return lat >= b.south && lat <= b.north && withinLon;
+}
+
+// keep in sync with ResultsMap
+const COUNTRY_CENTER: Record<string, [number, number]> = {
+  "South Africa": [-28.48, 24.67],
+  Namibia: [-22.56, 17.08],
+  Botswana: [-22.33, 24.68],
+  Germany: [51.16, 10.45],
+  Singapore: [1.35, 103.82],
+  Norway: [60.47, 8.47],
+  Canada: [56.13, -106.35],
+  China: [35.86, 104.19],
+  UAE: [23.42, 53.85],
+};
+
 export default function ResultsPage() {
   const [vendors, setVendors] = useState<VendorAgg[]>([]);
   const data = useMemo(() => loadLatestRun(), []);
@@ -35,6 +64,18 @@ export default function ResultsPage() {
     });
   }, [vendors]);
 
+  const aoi = data?.aoi;
+
+  const visible = useMemo(() => {
+    if (!aoi?.bounds) return sorted;
+    return sorted.filter((v) => {
+      const center = COUNTRY_CENTER[v.country];
+      if (!center) return false;
+      const [lat, lon] = center;
+      return inBbox(lat, lon, aoi.bounds);
+    });
+  }, [sorted, aoi]);
+
   if (!sorted.length) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-12">
@@ -49,8 +90,6 @@ export default function ResultsPage() {
       </div>
     );
   }
-
-  const aoi = data?.aoi;
 
   // Full-height split: adjust calc() if your header/footer change
   return (
@@ -74,7 +113,7 @@ export default function ResultsPage() {
           </div>
           <div className="flex-1 overflow-auto p-4">
             <div className="grid gap-4">
-              {sorted.map((v) => (
+              {visible.map((v) => (
                 <div
                   key={v.name}
                   onMouseEnter={() => setHoverVendor(v.name)}

@@ -27,20 +27,59 @@ export default function RootLayout({
       <body className="min-h-screen flex flex-col">
         <header className="sticky top-0 z-50 border-b border-white/10 bg-black/30 backdrop-blur px-4 py-3">
           <div className="mx-auto max-w-6xl flex items-center justify-between">
-            <div className="text-xl font-semibold tracking-wide">Custos</div>
-            <nav className="flex gap-3 text-sm">
-              <a href="/" className="hover:underline">
+            {/* Brand → home */}
+            <a
+              href="/"
+              aria-label="Go to Custos home"
+              className="group inline-flex items-center gap-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+            >
+              <span className="brand-custos" data-text="Custos">
+                Custos
+              </span>
+            </a>
+
+            {/* Nav */}
+            <nav className="flex gap-1 text-sm">
+              <a
+                href="/"
+                className="navlink"
+                aria-current={
+                  typeof window !== "undefined" &&
+                  window.location.pathname === "/"
+                    ? "page"
+                    : undefined
+                }
+              >
                 Prompt
               </a>
-              <a href="/map/" className="hover:underline">
+              <a
+                href="/map"
+                className="navlink"
+                aria-current={
+                  typeof window !== "undefined" &&
+                  window.location.pathname.startsWith("/map")
+                    ? "page"
+                    : undefined
+                }
+              >
                 Map
               </a>
-              <a href="/dashboard/" className="hover:underline">
+              <a
+                href="/dashboard"
+                className="navlink"
+                aria-current={
+                  typeof window !== "undefined" &&
+                  window.location.pathname.startsWith("/dashboard")
+                    ? "page"
+                    : undefined
+                }
+              >
                 Summary
               </a>
             </nav>
           </div>
         </header>
+
         <main className="flex-1">{children}</main>
         <footer className="border-t border-white/10 px-4 py-6 text-xs text-white/60">
           <div className="mx-auto max-w-6xl">
