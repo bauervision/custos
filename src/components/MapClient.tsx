@@ -162,7 +162,7 @@ export default function MapClient() {
       );
     }
     const seed = seedParts.join(" — ");
-    router.push(`/loading?seed=${encodeURIComponent(seed)}`);
+    router.push(`/loading/?seed=${encodeURIComponent(seed)}`);
   };
 
   return (

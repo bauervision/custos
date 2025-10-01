@@ -158,10 +158,10 @@ export default function LoadingPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <a href="/results" className="cta-primary">
+            <a href="/results/" className="cta-primary">
               View Results
             </a>
-            <a href="/dashboard" className="cta-secondary">
+            <a href="/dashboard/" className="cta-secondary">
               Summary
             </a>
           </div>

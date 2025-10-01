@@ -32,10 +32,10 @@ export default function RootLayout({
               <a href="/" className="hover:underline">
                 Prompt
               </a>
-              <a href="/map" className="hover:underline">
+              <a href="/map/" className="hover:underline">
                 Map
               </a>
-              <a href="/dashboard" className="hover:underline">
+              <a href="/dashboard/" className="hover:underline">
                 Summary
               </a>
             </nav>

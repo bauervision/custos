@@ -121,7 +121,7 @@ export default function HomePage() {
               </div>
               <div className="flex gap-2">
                 <a
-                  href={`/loading?seed=${encodeURIComponent(query)}`}
+                  href={`/loading/?seed=${encodeURIComponent(query)}`}
                   className="rounded-lg bg-gradient-to-r from-cyan-400/90 to-emerald-400/90 px-4 py-2 text-black font-semibold hover:from-cyan-300 hover:to-emerald-300"
                 >
                   Run Report
