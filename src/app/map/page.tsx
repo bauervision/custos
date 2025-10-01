@@ -12,7 +12,7 @@ export default function MapPage() {
     patchLeafletIcons();
   }, []);
   return (
-    <div className="h-[calc(100vh-120px)] mx-auto max-w-6xl px-4 py-6">
+    <div className="min-h-[calc(100vh-120px)] mx-auto max-w-6xl px-4 py-6">
       <MapClient />
     </div>
   );

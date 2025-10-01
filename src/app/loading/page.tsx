@@ -10,7 +10,7 @@ import {
   recommendationScore,
   riskFromBreakdown,
 } from "@/lib/scoring";
-import { BBox } from "@/lib/aoi";
+import { BBox, readAoiFromSession } from "@/lib/aoi";
 
 const TOTAL_MS = 60_000;
 
@@ -115,7 +115,7 @@ export default function LoadingPage() {
 
   const aoi = useMemo(() => {
     try {
-      const raw = sessionStorage.getItem("custos:aoi");
+      const raw = sessionStorage.getItem("kustos:aoi");
       return raw ? (JSON.parse(raw) as { bounds?: BBox }) : null;
     } catch {
       return null;
@@ -150,23 +150,22 @@ export default function LoadingPage() {
     if (pct >= 100 && !savedRef.current) {
       savedRef.current = true;
 
-      // pull AOI if present
-      let aoi: any = null;
-      try {
-        const raw = sessionStorage.getItem("custos:aoi");
-        if (raw) aoi = JSON.parse(raw);
-      } catch {}
+      // Detect whether this run should include an AOI
+      const useAoi = /\bAOI\s-?\d+(\.\d+)?,\s-?\d+(\.\d+)?\s\(/.test(seed);
+      const aoiForRun = useAoi ? readAoiFromSession() : null;
 
       const vendors = Array.from(vendorMapRef.current.values());
       const payload = {
         vendors,
         counts,
         seed,
+        aoi: aoiForRun, // ✅ persist AOI only when intended
         createdAt: Date.now(),
-        aoi,
       };
+
       try {
-        sessionStorage.setItem("custos:run", JSON.stringify(payload));
+        sessionStorage.setItem("kustos:run", JSON.stringify(payload)); // ✅ new key
+        sessionStorage.removeItem("custos:run"); // cleanup old
       } catch {}
     }
   }, [pct, counts, seed]);

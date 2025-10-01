@@ -22,9 +22,43 @@ function toRing(coords: any): Ring {
   return ring;
 }
 
+const NEW_KEY = "kustos:aoi";
+const OLD_KEY = "custos:aoi";
+
+/** Read AOI from session (migrates old key). */
+export function readAoiFromSession(): AoiSummary | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const rawNew = sessionStorage.getItem(NEW_KEY);
+    if (rawNew) return JSON.parse(rawNew) as AoiSummary;
+
+    const rawOld = sessionStorage.getItem(OLD_KEY);
+    if (rawOld) {
+      const aoi = JSON.parse(rawOld) as AoiSummary;
+      sessionStorage.setItem(NEW_KEY, rawOld);
+      sessionStorage.removeItem(OLD_KEY);
+      return aoi;
+    }
+  } catch {}
+  return null;
+}
+
+/** Write/clear AOI in session (clears old key too). */
+export function writeAoiToSession(aoi: AoiSummary | null | undefined) {
+  if (typeof window === "undefined") return;
+  try {
+    if (aoi) {
+      sessionStorage.setItem(NEW_KEY, JSON.stringify(aoi));
+    } else {
+      sessionStorage.removeItem(NEW_KEY);
+    }
+    sessionStorage.removeItem(OLD_KEY);
+  } catch {}
+}
+
 export function getAoiFromSession(): AoiSummary | null {
   try {
-    const raw = sessionStorage.getItem("custos:aoi");
+    const raw = sessionStorage.getItem("kustos:aoi");
     return raw ? (JSON.parse(raw) as AoiSummary) : null;
   } catch {
     return null;

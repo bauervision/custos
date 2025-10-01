@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -8,6 +8,7 @@ import "leaflet-draw";
 import { patchLeafletIcons } from "@/lib/leaflet";
 import { useRouter } from "next/navigation";
 import { DARK_TILE } from "@/lib/tiles";
+import { writeAoiToSession } from "@/lib/aoi";
 
 type AoiSummary = {
   type: "Polygon" | "Rectangle";
@@ -103,10 +104,27 @@ function DrawControls({
     map.on((L as any).Draw.Event.EDITED, onEdited);
     map.on((L as any).Draw.Event.DELETED, onDeleted);
 
-    // expose a clear() for the parent
-    setClearRef(() => () => {
-      drawn.current.clearLayers();
-      onChange(undefined);
+    // ✅ expose a robust clear() to parent
+    setClearRef(() => {
+      return () => {
+        try {
+          // remove any shapes from our FG (belt-and-suspenders)
+          drawn.current.eachLayer((l: any) => {
+            drawn.current.removeLayer(l);
+            if (map.hasLayer(l)) map.removeLayer(l);
+          });
+          drawn.current.clearLayers();
+
+          // notify Leaflet-Draw so its toolbar state resets
+          (map as any).fire((L as any).Draw.Event.DELETED, {
+            layers: drawn.current,
+          });
+
+          onChange(undefined);
+        } catch {
+          onChange(undefined);
+        }
+      };
     });
 
     return () => {
@@ -127,6 +145,11 @@ export default function MapClient() {
   const [material, setMaterial] = useState("raw earth materials");
   const router = useRouter();
 
+  // ✅ stable setter so the child’s useEffect runs once, not on every render
+  const installClear = useCallback((fn: () => void) => {
+    clearRef.current = fn;
+  }, []);
+
   useEffect(() => {
     patchLeafletIcons();
   }, []);
@@ -134,22 +157,16 @@ export default function MapClient() {
   const centerInitial = useMemo<[number, number]>(() => [-28.47, 24.67], []);
 
   const runReport = () => {
-    // Save AOI to session for /loading → /results
     try {
-      if (aoi) {
-        sessionStorage.setItem(
-          "custos:aoi",
-          JSON.stringify({
-            type: aoi.type,
-            bounds: aoi.bounds,
-            center: aoi.center,
-            vertices: aoi.vertices,
-            geojson: aoi.geojson,
-          })
-        );
-      } else {
-        sessionStorage.removeItem("custos:aoi");
-      }
+      if (aoi)
+        writeAoiToSession({
+          type: aoi.type,
+          bounds: aoi.bounds,
+          center: aoi.center,
+          vertices: aoi.vertices,
+          geojson: aoi.geojson,
+        });
+      else writeAoiToSession(null);
     } catch {}
 
     const seedParts = [material.trim()];
@@ -165,10 +182,9 @@ export default function MapClient() {
     const seed = seedParts.join(" — ");
     router.push(`/loading/?seed=${encodeURIComponent(seed)}`);
   };
-
   return (
-    <div className="grid gap-4">
-      <div className="h-[60vh] w-full rounded-xl overflow-hidden border border-white/10">
+    <div className="relative isolate z-0 grid gap-4">
+      <div className="relative z-0 h-[60vh] w-full rounded-xl overflow-hidden border border-white/10">
         <MapContainer
           center={centerInitial}
           zoom={5}
@@ -177,10 +193,7 @@ export default function MapClient() {
         >
           {/* You can swap this tile for a simpler region style later */}
           <TileLayer url={DARK_TILE.url} attribution={DARK_TILE.attribution} />
-          <DrawControls
-            onChange={setAoi}
-            setClearRef={(fn) => (clearRef.current = fn)}
-          />
+          <DrawControls onChange={setAoi} setClearRef={installClear} />
         </MapContainer>
       </div>
 
@@ -246,7 +259,11 @@ export default function MapClient() {
             Run Report with AOI
           </button>
           <button
-            onClick={() => clearRef.current?.()}
+            onClick={() => {
+              clearRef.current?.();
+              writeAoiToSession(null); // ensure persistence is cleared
+              setAoi(undefined); // reflect in local UI immediately
+            }}
             className="rounded-lg border border-white/20 px-4 py-2 text-white/90 hover:bg-white/10"
           >
             Clear AOI

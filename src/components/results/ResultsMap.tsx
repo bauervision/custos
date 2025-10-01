@@ -13,6 +13,8 @@ import { useSelection } from "@/state/selection";
 import { patchLeafletIcons } from "@/lib/leaflet";
 import L from "leaflet";
 import { DARK_TILE } from "@/lib/tiles";
+import { accentForKey, accentForRisk, withAlpha } from "@/lib/palette";
+import { riskFromBreakdown } from "@/lib/scoring";
 
 type Props = {
   vendors: VendorAgg[];
@@ -223,16 +225,22 @@ export default function ResultsMap({ vendors, aoi }: Props) {
       {/* Vendor pins */}
       {positions.map(({ name, pos }) => {
         const isHover = name === hoverVendor || name === selectedVendor;
+        // match VendorCard ribbon by risk bucket
+        const vendor = vendors.find((v) => v.name === name);
+        const risk = vendor ? riskFromBreakdown(vendor.breakdown) : 50;
+        const accent = accentForRisk(risk);
+
+        const stroke = withAlpha(accent, isHover ? 0.95 : 0.75);
+        const fill = withAlpha(accent, isHover ? 0.6 : 0.35);
+
         return (
           <CircleMarker
             key={name}
             center={pos}
             radius={isHover ? 10 : 7}
             pathOptions={{
-              color: isHover ? "rgba(0,255,200,0.9)" : "rgba(180,220,255,0.7)",
-              fillColor: isHover
-                ? "rgba(0,255,200,0.6)"
-                : "rgba(180,220,255,0.35)",
+              color: stroke,
+              fillColor: fill,
               weight: isHover ? 3 : 2,
               fillOpacity: 0.9,
             }}

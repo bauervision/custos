@@ -8,13 +8,13 @@ export type RunData = {
   createdAt: number;
 };
 
-export function loadLatestRun(): RunData | null {
+export function loadLatestRun(): any | null {
   if (typeof window === "undefined") return null;
-  const raw = sessionStorage.getItem("custos:run");
-  if (!raw) return null;
   try {
-    return JSON.parse(raw) as RunData;
-  } catch {
-    return null;
-  }
+    const rawNew = sessionStorage.getItem("kustos:run");
+    if (rawNew) return JSON.parse(rawNew);
+    const rawOld = sessionStorage.getItem("custos:run");
+    if (rawOld) return JSON.parse(rawOld);
+  } catch {}
+  return null;
 }
