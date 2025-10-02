@@ -14,7 +14,7 @@ export default function CategoryToolbar({
     <aside
       role="toolbar"
       aria-orientation="vertical"
-      className="hidden md:flex shrink-0 w-14 rounded-2xl border border-white/10 bg-white/[0.03] p-2 backdrop-blur flex-col items-center gap-2 overflow-x-hidden" // ← no horizontal scrollbar
+      className="hidden md:flex shrink-0 mr-8 w-14 rounded-2xl border border-white/10 bg-white/[0.03] p-2 backdrop-blur flex-col items-center gap-2 overflow-x-hidden" // ← no horizontal scrollbar
     >
       {CATEGORIES.map(({ key, label, iconPath }) => {
         const active = key === selected;

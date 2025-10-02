@@ -27,7 +27,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <KustosProvider>
-        <body className="min-h-screen flex flex-col">
+        <body
+          className="min-h-screen flex flex-col"
+          style={{ scrollbarGutter: "stable both-edges" }}
+        >
           <header className="sticky top-0 z-50 border-b border-white/10 bg-black/30 backdrop-blur px-4 py-3">
             <div className="mx-auto max-w-6xl flex items-center justify-between">
               {/* Brand → home */}

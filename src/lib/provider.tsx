@@ -22,7 +22,7 @@ type ProviderAPI = {
 const KustosContext = createContext<ProviderAPI | null>(null);
 
 export function KustosProvider({ children }: { children: React.ReactNode }) {
-  const [vendorMode, setVendorMode] = useState<VendorMode>("discovery");
+  const [vendorMode, setVendorMode] = useState<VendorMode>("vetting");
   const [prescreen, setPrescreen] = useState<Prescreen>({
     include: [],
     exclude: [],
