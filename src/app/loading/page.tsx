@@ -1,19 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { startStream, type VendorHit } from "@/lib/stream";
 import RadialHeatmap from "@/components/loading/RadialHeatmap";
 import WordCloud from "@/components/loading/WordCloud";
 import VendorCard, { type VendorAgg } from "@/components/loading/VendorCard";
+import type { Vendor } from "@/core/types";
+import { makeVendorId } from "@/core/ids";
+import { getProvider } from "@/core/di";
+import type { StreamEvent, Aoi } from "@/core/types";
 import {
   scoreKeywords,
   recommendationScore,
   riskFromBreakdown,
-} from "@/lib/scoring";
+} from "@/core/scoring";
 import { BBox, readAoiFromSession } from "@/lib/aoi";
 
 const TOTAL_MS = 60_000;
 
+// Keep map centers identical to your results page
 const COUNTRY_CENTER: Record<string, [number, number]> = {
   "South Africa": [-28.48, 24.67],
   Namibia: [-22.56, 17.08],
@@ -25,6 +29,35 @@ const COUNTRY_CENTER: Record<string, [number, number]> = {
   China: [35.86, 104.19],
   UAE: [23.42, 53.85],
 };
+
+/** ───────────────────────────────────────────────────────────
+ * TEMP: tier baseline here so loading + results can align.
+ * When ready, move this map to `src/data/companyTiers.ts`
+ * and import it from both loading/results and the mock stream.
+ * ───────────────────────────────────────────────────────────*/
+type Tier = "LOW" | "MEDIUM" | "HIGH";
+const COMPANY_TIER: Record<string, Tier> = {
+  "Aurora Mineral AG": "LOW",
+  "NorthCape Commodities": "LOW",
+  "Unique Trade Corp.": "LOW",
+
+  "Platina Global": "MEDIUM",
+  "Meridian Metals": "MEDIUM",
+  "Pacific Crown Trading": "MEDIUM",
+
+  "EarthMaterials Inc.": "HIGH",
+  "Kalahari Extractives": "HIGH",
+  "Sable Ridge Holdings": "HIGH",
+  "Trans-Continental Logistics": "HIGH",
+};
+
+// One-time baseline bump by tier (ensures visible color split)
+function baselineDeltaForTier(name: string) {
+  const t = COMPANY_TIER[name];
+  if (t === "HIGH") return { finance: 25, ethics: 55, logistics: 12 };
+  if (t === "MEDIUM") return { finance: 12, ethics: 28, logistics: 6 };
+  return { finance: 0, ethics: 0, logistics: 0 };
+}
 
 function normLon(lon: number): number {
   let x = lon;
@@ -46,6 +79,8 @@ export default function LoadingPage() {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const vendorMapRef = useRef<Map<string, VendorAgg>>(new Map());
   const [tick, setTick] = useState(0); // force re-render when vendor map updates
+  const providerRef = useRef(getProvider());
+  const savedRef = useRef(false);
 
   // Optional: bias the stream from the query string
   const seed = useMemo(() => {
@@ -53,8 +88,17 @@ export default function LoadingPage() {
     return new URLSearchParams(window.location.search).get("seed") ?? "";
   }, []);
 
-  const savedRef = useRef(false);
+  // AOI for this page (used when saving the run)
+  const aoi = useMemo(() => {
+    try {
+      const raw = sessionStorage.getItem("kustos:aoi");
+      return raw ? (JSON.parse(raw) as { bounds?: BBox } & Aoi) : null;
+    } catch {
+      return null;
+    }
+  }, []);
 
+  // Progress timer + stream hook-up
   useEffect(() => {
     // progress timer
     const t0 = Date.now();
@@ -64,36 +108,42 @@ export default function LoadingPage() {
       if (e >= TOTAL_MS) clearInterval(id);
     }, 200);
 
-    // streaming simulator
-    const stop = startStream({
+    // streaming via provider
+    const stop = providerRef.current.streamSignals({
       totalMs: TOTAL_MS,
       intervalMs: 2000,
       seed,
-      onEvent(hit: VendorHit) {
+      onEvent(evt: StreamEvent) {
         // global keyword counts (for heatmap + word cloud)
         setCounts((prev) => {
           const next = { ...prev };
-          for (const k of hit.keywords) next[k] = (next[k] ?? 0) + 1;
+          for (const k of evt.keywords) next[k] = (next[k] ?? 0) + 1;
           return next;
         });
 
-        // aggregate vendor data + breakdown
-        const key = hit.name;
+        // aggregate vendor data + breakdown (score keywords)
+        const key = makeVendorId(evt.name, evt.country);
         const map = vendorMapRef.current;
         const prev = map.get(key);
-        const delta = scoreKeywords(hit.keywords);
+        const delta = scoreKeywords(evt.keywords);
 
         if (!prev) {
+          // one-time tier baseline
+          const base = baselineDeltaForTier(evt.name);
           map.set(key, {
-            name: hit.name,
-            country: hit.country,
-            keywords: Array.from(new Set(hit.keywords)),
-            breakdown: delta,
+            name: evt.name,
+            country: evt.country,
+            keywords: Array.from(new Set(evt.keywords)),
+            breakdown: {
+              finance: delta.finance + base.finance,
+              ethics: delta.ethics + base.ethics,
+              logistics: delta.logistics + base.logistics,
+            },
           });
         } else {
           map.set(key, {
             ...prev,
-            keywords: Array.from(new Set([...prev.keywords, ...hit.keywords])),
+            keywords: Array.from(new Set([...prev.keywords, ...evt.keywords])),
             breakdown: {
               finance: prev.breakdown.finance + delta.finance,
               ethics: prev.breakdown.ethics + delta.ethics,
@@ -102,8 +152,7 @@ export default function LoadingPage() {
           });
         }
 
-        // trigger re-render for vendor grid
-        setTick((t) => t + 1);
+        setTick((t) => t + 1); // re-render vendor grid
       },
     });
 
@@ -113,15 +162,7 @@ export default function LoadingPage() {
     };
   }, [seed]);
 
-  const aoi = useMemo(() => {
-    try {
-      const raw = sessionStorage.getItem("kustos:aoi");
-      return raw ? (JSON.parse(raw) as { bounds?: BBox }) : null;
-    } catch {
-      return null;
-    }
-  }, []);
-
+  // Sorted & optionally AOI-filtered vendors
   const vendorsSorted: VendorAgg[] = useMemo(() => {
     const arr = Array.from(vendorMapRef.current.values());
     return arr.sort((a, b) => {
@@ -132,43 +173,64 @@ export default function LoadingPage() {
   }, [counts, tick]);
 
   const vendorsVisible = useMemo(() => {
-    const bounds = aoi?.bounds as BBox | undefined; // narrow once
+    const bounds = aoi?.bounds as BBox | undefined;
     if (!bounds) return vendorsSorted;
 
     return vendorsSorted.filter((v) => {
       const center = COUNTRY_CENTER[v.country];
       if (!center) return false;
       const [lat, lon] = center;
-      return inBbox(lat, lon, bounds); // now BBox, not possibly undefined
+      return inBbox(lat, lon, bounds);
     });
   }, [vendorsSorted, aoi]);
 
+  // Save the run when complete (via provider)
   const pct = Math.round((elapsed / TOTAL_MS) * 100);
   const isDone = pct >= 100;
 
   useEffect(() => {
-    if (pct >= 100 && !savedRef.current) {
-      savedRef.current = true;
+    if (!isDone || savedRef.current) return;
 
-      // Detect whether this run should include an AOI
-      const useAoi = /\bAOI\s-?\d+(\.\d+)?,\s-?\d+(\.\d+)?\s\(/.test(seed);
-      const aoiForRun = useAoi ? readAoiFromSession() : null;
+    savedRef.current = true;
 
-      const vendors = Array.from(vendorMapRef.current.values());
-      const payload = {
-        vendors,
+    const useAoi = /\bAOI\s-?\d+(\.\d+)?,\s-?\d+(\.\d+)?\s\(/.test(seed);
+    const aoiForRun = useAoi ? readAoiFromSession() : null;
+
+    const vendors = Array.from(vendorMapRef.current.values());
+
+    // Adapt VendorAgg -> Vendor (use name as id for now)
+    const vendorsForSave: Vendor[] = vendors.map((v) => ({
+      id: makeVendorId(v.name, v.country),
+      name: v.name,
+      country: v.country,
+      keywords: v.keywords,
+      breakdown: v.breakdown,
+    }));
+
+    providerRef.current
+      .saveRun({
+        vendors: vendorsForSave,
         counts,
         seed,
-        aoi: aoiForRun, // ✅ persist AOI only when intended
+        aoi: aoiForRun ?? null,
         createdAt: Date.now(),
-      };
-
-      try {
-        sessionStorage.setItem("kustos:run", JSON.stringify(payload)); // ✅ new key
-        sessionStorage.removeItem("custos:run"); // cleanup old
-      } catch {}
-    }
-  }, [pct, counts, seed]);
+      })
+      .catch(() => {
+        // session fallback (non-fatal)
+        try {
+          sessionStorage.setItem(
+            "kustos:run",
+            JSON.stringify({
+              vendors,
+              counts,
+              seed,
+              aoi: aoiForRun ?? null,
+              createdAt: Date.now(),
+            })
+          );
+        } catch {}
+      });
+  }, [isDone, counts, seed]);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">

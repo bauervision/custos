@@ -6,6 +6,8 @@ import type { VendorAgg } from "@/components/loading/VendorCard";
 import VendorCard from "@/components/loading/VendorCard";
 import Donut from "@/components/dashboard/Donut";
 import { recommendationScore, riskFromBreakdown } from "@/lib/scoring";
+import { riskTier, riskGradients } from "@/lib/palette";
+import Link from "next/link";
 
 type BBox = { south: number; west: number; north: number; east: number };
 
@@ -335,10 +337,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Summary & Recommendations</h1>
         <div className="flex gap-2">
-          <a
-            href="/results"
-            className="rounded-lg border border-white/20 px-3 py-1.5 text-sm hover:bg-white/10"
-          >
+          <a href="/results" className="cta-primary">
             View Map
           </a>
           <button
@@ -347,6 +346,59 @@ export default function DashboardPage() {
           >
             Export JSON
           </button>
+        </div>
+      </div>
+
+      {/* Top Picks — Highlighted */}
+      <div className="mt-10">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="text-2xl text-white/70">Top Recommendations</div>
+        </div>
+
+        {/* Section frame with subtle glow */}
+        <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-emerald-400/30 via-cyan-300/30 to-purple-400/30">
+          <div className="rounded-2xl bg-white/[0.03] p-4 border border-white/10">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {top3.map((v, i) => {
+                const tier = riskTier(riskFromBreakdown(v.breakdown));
+                const gradient = riskGradients[tier];
+                const rank = i + 1;
+                const slug = v.name.toLowerCase().replace(/\s+/g, "-");
+                return (
+                  <div
+                    key={v.name}
+                    className={`
+                relative rounded-xl border border-white/10 bg-white/[0.04]
+                shadow-[0_10px_30px_rgba(0,0,0,0.3)]
+                hover:shadow-[0_18px_44px_rgba(0,0,0,0.4)] transition-shadow
+              `}
+                  >
+                    {/* Risk-tinted halo */}
+                    <div
+                      className={`pointer-events-none absolute -inset-0.5 rounded-xl blur-xl opacity-30 bg-gradient-to-r ${gradient}`}
+                      aria-hidden
+                    />
+
+                    {/* Rank badge */}
+                    <div className="absolute -top-2 -left-2 z-20">
+                      <div
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold text-black bg-gradient-to-r ${gradient} shadow`}
+                      >
+                        #{rank}
+                      </div>
+                    </div>
+
+                    {/* VendorCard content */}
+                    <div className="relative z-10">
+                      <Link key={v.name} href={`/vendor/${slug}`}>
+                        <VendorCard v={v} />
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -423,18 +475,6 @@ export default function DashboardPage() {
               run.
             </li>
           </ul>
-        </div>
-      </div>
-
-      {/* Top Picks */}
-      <div className="mt-8">
-        <div className="mb-3 text-sm text-white/70">Top Recommendations</div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {top3.map((v) => (
-            <div key={v.name}>
-              <VendorCard v={v} />
-            </div>
-          ))}
         </div>
       </div>
 

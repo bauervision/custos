@@ -42,3 +42,15 @@ export function withAlpha(hex: string, alpha: number): string {
   const b = parseInt(m.slice(4, 6), 16);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
+
+export const riskGradients = {
+  low: "from-emerald-400/80 to-cyan-300/80",
+  medium: "from-amber-300/80 to-yellow-300/80",
+  high: "from-rose-400/80 to-pink-400/80",
+};
+
+export function riskTier(risk: number) {
+  if (risk < 30) return "low" as const;
+  if (risk < 60) return "medium" as const;
+  return "high" as const;
+}

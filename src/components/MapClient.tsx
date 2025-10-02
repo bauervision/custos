@@ -154,7 +154,8 @@ export default function MapClient() {
     patchLeafletIcons();
   }, []);
 
-  const centerInitial = useMemo<[number, number]>(() => [-28.47, 24.67], []);
+  const centerInitial = useMemo<[number, number]>(() => [20, 0], []);
+  const zoomInitial = 2;
 
   const runReport = () => {
     try {
@@ -187,7 +188,7 @@ export default function MapClient() {
       <div className="relative z-0 h-[60vh] w-full rounded-xl overflow-hidden border border-white/10">
         <MapContainer
           center={centerInitial}
-          zoom={5}
+          zoom={zoomInitial}
           className="h-full w-full"
           worldCopyJump
         >
@@ -199,8 +200,10 @@ export default function MapClient() {
 
       {/* AOI + Material Panel */}
       <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-[280px] flex-1">
+        {/* Row 1: Material (left) + Actions (right) */}
+        <div className="grid gap-4 md:grid-cols-[1fr_auto] items-end">
+          {/* Material input */}
+          <div className="min-w-[280px]">
             <div className="text-sm font-medium text-white/90">Material</div>
             <input
               value={material}
@@ -213,61 +216,36 @@ export default function MapClient() {
             </div>
           </div>
 
-          <div className="min-w-[320px] flex-1">
-            <div className="text-sm font-medium text-white/90">
-              Selected Area
-            </div>
-            {aoi ? (
-              <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
-                  <div className="text-xs text-white/60">Type</div>
-                  <div className="font-medium">{aoi.type}</div>
-                </div>
-                <div className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
-                  <div className="text-xs text-white/60">Vertices</div>
-                  <div className="font-medium">{aoi.vertices}</div>
-                </div>
-                <div className="rounded-lg border border-white/10 bg-white/[0.02] p-3 col-span-2">
-                  <div className="text-xs text-white/60">Bounds (S/W/N/E)</div>
-                  <div className="font-mono text-xs">
-                    {fmt(aoi.bounds.south)}, {fmt(aoi.bounds.west)} —{" "}
-                    {fmt(aoi.bounds.north)}, {fmt(aoi.bounds.east)}
-                  </div>
-                </div>
-                <div className="rounded-lg border border-white/10 bg-white/[0.02] p-3 col-span-2">
-                  <div className="text-xs text-white/60">Center</div>
-                  <div className="font-mono text-xs">
-                    {fmt(aoi.center.lat)}, {fmt(aoi.center.lon)}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="mt-2 text-sm text-white/60">
-                Use the toolbar on the map to draw a <b>Rectangle</b> or{" "}
-                <b>Polygon</b>. You can edit or delete it after placing.
-              </div>
-            )}
+          {/* Actions (right-aligned on md+, stacked on mobile) */}
+          <div className="flex flex-wrap gap-2 md:justify-end">
+            <button
+              onClick={runReport}
+              className="rounded-lg bg-gradient-to-r from-cyan-400/90 to-emerald-400/90 px-4 py-2 text-black font-semibold hover:from-cyan-300 hover:to-emerald-300 disabled:opacity-50"
+              disabled={!material.trim()}
+            >
+              Run Report with AOI
+            </button>
+            <button
+              onClick={() => {
+                clearRef.current?.();
+                writeAoiToSession(null);
+                setAoi(undefined);
+              }}
+              className="rounded-lg border border-white/20 px-4 py-2 text-white/90 hover:bg-white/10"
+            >
+              Clear AOI
+            </button>
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            onClick={runReport}
-            className="rounded-lg bg-gradient-to-r from-cyan-400/90 to-emerald-400/90 px-4 py-2 text-black font-semibold hover:from-cyan-300 hover:to-emerald-300 disabled:opacity-50"
-            disabled={!material.trim()}
-          >
-            Run Report with AOI
-          </button>
-          <button
-            onClick={() => {
-              clearRef.current?.();
-              writeAoiToSession(null); // ensure persistence is cleared
-              setAoi(undefined); // reflect in local UI immediately
-            }}
-            className="rounded-lg border border-white/20 px-4 py-2 text-white/90 hover:bg-white/10"
-          >
-            Clear AOI
-          </button>
+        {/* Row 2: Selected Area (full width) */}
+        <div className="mt-6">
+          <div className="text-sm font-medium text-white/90">Selected Area</div>
+
+          <div className="mt-2 text-sm text-white/60">
+            Use the toolbar on the map to draw a <b>Rectangle</b> or{" "}
+            <b>Polygon</b>. You can edit or delete it after placing.
+          </div>
         </div>
       </div>
     </div>

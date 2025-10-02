@@ -79,7 +79,12 @@ export default function ResultsPage() {
   if (!sorted.length) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-12">
-        <h1 className="text-2xl font-semibold mb-3">Results</h1>
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="text-2xl font-semibold">Results</h1>
+          <a href="/dashboard/" className="cta-secondary">
+            Summary
+          </a>
+        </div>
         <p className="text-white/70">
           No recent run found. Try{" "}
           <a className="underline" href="/loading">
@@ -94,10 +99,18 @@ export default function ResultsPage() {
   // Full-height split: adjust calc() if your header/footer change
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
-      <h1 className="text-2xl font-semibold mb-4">Vendor Landscape</h1>
+      {/* Header with Summary CTA (matches Loading page style) */}
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-semibold">Vendor Landscape</h1>
+        <div className="flex items-center gap-2">
+          <a href="/dashboard/" className="cta-primary">
+            Go To Summary
+          </a>
+        </div>
+      </div>
 
       {aoi && (
-        <div className="rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-1.5 text-xs text-emerald-200">
+        <div className="rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-1.5 text-xs text-emerald-200 mb-4">
           AOI active • centered at{" "}
           {aoi?.center
             ? `${aoi.center.lat.toFixed(2)}, ${aoi.center.lon.toFixed(2)}`
