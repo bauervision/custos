@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Literal
 
 import fastapi
+from fastapi.middleware.cors import CORSMiddleware
 from kloak import Kloak
 from kloak.data.history_management import AllHistoryManagement
 
@@ -42,6 +43,20 @@ async def lifespan(_app: fastapi.FastAPI):
 
 
 app = fastapi.FastAPI(title="ScrimBot", redirect_slashes=False, lifespan=lifespan)
+
+# Configure CORS for frontend development
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",  # Nuxt.js default dev server
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",  # Alternative port
+        "http://127.0.0.1:3001",
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 
 class ChatRequest(TypedDict):
