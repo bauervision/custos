@@ -1,13 +1,13 @@
 from google.genai import types
 from kloak import Kloak
 from kloak.agent import Agent
-from kloak.data import KnexResponse, Schema, SupportedModels, KnexusGenConfig
+from kloak.data import KnexResponse, KnexusGenConfig, Schema, SupportedModels
 from kloak.data.history_management import HistoryManagement
 
-from scrim_bot.prompts import ASSISTANT_INSTRUCTIONS
 from scrim_bot.agents.heavy_research_agent import (
     HeavyResearchAgent,
 )
+from scrim_bot.prompts import ASSISTANT_INSTRUCTIONS
 from scrim_bot.utils.enums import PRO
 
 

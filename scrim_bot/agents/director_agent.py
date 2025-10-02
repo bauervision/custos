@@ -1,7 +1,7 @@
 from kloak.agent import Agent
 from kloak.data import KnexResponse, KnexTool, Schema, SchemaEntry, SupportedModels
 
-from scrim_bot.prompts import DIRECTOR_INSTRUCTIONS
+from scrim_bot.prompts import DIRECTOR_INSTRUCTIONS, DIRECTOR_INSTRUCTIONS_V2
 from scrim_bot.schemas import ResearchQuery
 
 
@@ -13,11 +13,11 @@ class DirectorAgent(Agent[ResearchQuery]):
 
     @property
     def agent_description(self) -> str:
-        return "Decomposes a research task into smaller subtasks."
+        return "Decomposes a research tasks into smaller subtasks."
 
     @property
     def prompt(self) -> str:
-        return DIRECTOR_INSTRUCTIONS
+        return DIRECTOR_INSTRUCTIONS_V2
 
     @property
     def response_schema(self) -> Schema:

@@ -26,7 +26,7 @@ def parse_args() -> Namespace:
     return parser.parse_args()
 
 
-def main(args: Namespace) -> None:
+async def main(args: Namespace) -> None:
     """Main entrypoint"""
     history_manager = AllHistoryManagement()
     # Initialize Kloak
@@ -44,12 +44,12 @@ def main(args: Namespace) -> None:
         prompt = input("User: ")
         if prompt.lower() in ["exit", "quit"]:
             break
-        response = assistant.chat(prompt)
-        # response = await assistant.async_chat(prompt)
+        # response = assistant.chat(prompt)
+        response = await assistant.async_chat(prompt)
         logger.info(f"Agent: {response}")
 
 
 if __name__ == "__main__":
     cmdline_args = parse_args()
-    main(cmdline_args)
-    # asyncio.run(main(cmdline_args))
+    # main(cmdline_args)
+    asyncio.run(main(cmdline_args))
