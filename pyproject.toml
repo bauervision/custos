@@ -15,6 +15,10 @@ dependencies = [
     "pydantic>=2.11.7",
     "typst>=0.13.5",
     "sec-edgar-downloader>=5.0.3",
+    "textual>=6.1.0",
+    "fastapi[standard]>=0.116.2",
+    "typing-extensions>=4.15.0",
+    "rich>=14.1.0",
 ]
 authors = [
     { name = "Damon Streat", email = "dj.streat@knexus.ai" },
@@ -30,12 +34,16 @@ dev = [
     "ty>=0.0.1a19",
 ]
 
+[build-system]
+requires = ["uv_build>=0.8.22,<0.9.0"]
+build-backend = "uv_build"
+
 # [project.scripts]
 # dev = "adk web --port 8501"
 # deploy = "deployment/deploy.py"
 
-[project.gui-scripts]
-vv_chat = "chat_app.main:main"
+# [project.gui-scripts]
+# vv_chat = "chat_app.main:main"
 
 [tool.uv]
 package = false
@@ -146,6 +154,10 @@ lint.extend-ignore = [
     "PTH123", #use pathlib
 ]
 
+[tool.basedpyright]
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "basic"
 
 # Exclude a variety of commonly ignored directories.
 exclude = [
@@ -181,15 +193,7 @@ exclude = [
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
-[tool.pyright]
-venvPath = "."
-venv = ".venv"
-
 # This section is crucial for setuptools to find packages in `src`
 [tool.setuptools.packages.find]
 where = ["src"] # Look for packages inside the 'src' directory
 include = ["knexus_vendor_vetting_agents_demo*"] # Include packages starting with this name
-
-[build-system]
-requires = ["uv_build>=0.8.11,<0.9.0"]
-build-backend = "uv_build"

@@ -1,13 +1,15 @@
+from google.genai import types
 from kloak import Kloak
 from kloak.agent import Agent
-from kloak.data import KnexResponse, Schema, SupportedModels
+from kloak.data import KnexResponse, KnexusGenConfig, Schema, SupportedModels
 from kloak.data.history_management import HistoryManagement
 
-from scrim_bot.prompts import ASSISTANT_INSTRUCTIONS
 from scrim_bot.agents.heavy_research_agent import (
     HeavyResearchAgent,
 )
-from scrim_bot.utils.enums import PRO
+from scrim_bot.prompts import ASSISTANT_INSTRUCTIONS
+from scrim_bot.utils.enums import FLASH, PRO
+from scrim_bot.vendor_discovery.vendor_discovery_agent import VendorDiscoveryAgent
 
 
 class AssistantAgent(Agent[KnexResponse]):
@@ -29,7 +31,10 @@ class AssistantAgent(Agent[KnexResponse]):
         """
         super().__init__(kloak=kloak, agent_name="assistant", agent_model=agent_model)
         self._researcher: HeavyResearchAgent = HeavyResearchAgent(
-            kloak, PRO, history_manager=history_manager
+            kloak, FLASH, history_manager=history_manager
+        )
+        self._discovery_agent: VendorDiscoveryAgent = VendorDiscoveryAgent(
+            kloak, FLASH, history_manager=history_manager
         )
 
     @property
@@ -49,4 +54,4 @@ class AssistantAgent(Agent[KnexResponse]):
 
     @property
     def agents(self) -> list[Agent[str]]:
-        return [self._researcher]
+        return [self._researcher, self._discovery_agent]
