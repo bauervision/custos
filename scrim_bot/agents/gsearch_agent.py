@@ -27,17 +27,29 @@ class GoogleSearchAgent(Agent):
     # def tools(self) -> list[KnexTool]:
     #     return [types.GoogleSearch()]
 
-    def chat(self, prompt: str | None = None, **kwargs) -> ResponseType | list[ResponseType]:
+    def chat(self, prompt: str | None = None, model: str | None = None, **kwargs, ) -> ResponseType | list[ResponseType]:
         """Chat with the agent."""
+        model_to_use = model if not None else self._agent_model
         res = self._kloak.generate_content(
             prompt=self.prompt,
-            model=self._agent_model,
+            model=model_to_use,
             user_prompt=prompt,
         )
         if isinstance(res, MultiKnexResponse):
             return [self._process_response(r) for r in res.responses]
         return self._process_response(res)
 
+    async def async_chat(self, prompt: str | None = None, model: str | None = None, **kwargs) -> ResponseType | list[ResponseType]:
+        """Chat with the agent."""
+        model_to_use = model if not None else self._agent_model
+        res = await self._kloak.async_generate_content(
+            prompt=self.prompt,
+            model=model_to_use,
+            user_prompt=prompt,
+        )
+        if isinstance(res, MultiKnexResponse):
+            return [self._process_response(r) for r in res.responses]
+        return self._process_response(res)
 
 def main():
     ask = "Could you please tell me what the most recent price of SPY was?"

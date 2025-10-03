@@ -16,7 +16,7 @@ def get_kloak():
             default_model=FLASH,
             enabled_models=[LITE, FLASH, PRO],
             default_config=KnexusGenConfig(
-                temperature=0.7, top_p=0.95, show_thinking=True
+                temperature=0.7, top_p=0.95, show_thinking=False  # If true, then flash-lite doesnt work
             ),
         )
     return _instance
@@ -30,6 +30,6 @@ def get_gkloak():
             vertex_project=GCP_PROJECT_ID,
             default_model=FLASH,
             enabled_models=[LITE, FLASH, PRO],
-            default_config=KnexusGenConfig(tools=[types.GoogleSearch()]),
+            default_config=KnexusGenConfig(tools=[types.GoogleSearch()], show_thinking=False),
         )
     return _ginstance

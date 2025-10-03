@@ -2,7 +2,7 @@ import asyncio
 import logging
 from asyncio import TaskGroup
 from concurrent.futures import ThreadPoolExecutor
-from pprint import pprint
+from pprint import pformat, pprint
 from typing import Any
 
 from google.genai import types
@@ -142,8 +142,8 @@ class HeavyResearchAgent(Agent[str]):
         logger.info("Synchronous heavy research agent started...")
         # 1. Decompose the research task
         research_plan = self.director.chat(prompt)
-        # logger.info(f"Research plan: {pformat(research_plan)}")
-        print("Research plan:\n", str(research_plan))
+        logger.info(f"Research plan: {pformat(research_plan)}")
+        # print("Research plan:\n", str(research_plan))
         research_query = {
             "finance": research_plan.finance,
             "political": research_plan.political,
