@@ -1,5 +1,4 @@
 import asyncio
-import json
 from typing import List
 
 from kloak import Kloak
@@ -11,7 +10,7 @@ from kloak.util import logger
 from scrim_bot.vendor_discovery.company_detail_agent import CompanyDetailAgent
 from scrim_bot.agents.gsearch_agent import GoogleSearchAgent
 from scrim_bot.prompts import VENDOR_DISCOVERY_INS
-from scrim_bot.schemas import VendorShortlist, VendorDetail
+from scrim_bot.schemas import MaterialSchema, VendorDetail, VendorOnlyListSchema, VendorShortlist
 from scrim_bot.utils.enums import FLASH, LITE
 
 
@@ -52,18 +51,13 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
         """Uses an LLM call to parse material and location from the user prompt."""
         logger.info("Extracting material and location from prompt...")
         extraction_prompt = f"""
-        From the following user request, extract the 'material' and the 'location'.
-        Return the result as a simple JSON object with keys "material" and "location".
-
-        User request: "{prompt}"
+        From the following user request, extract the 'material' and the 'location' the user is interested in
+        User request: {prompt}
         """
         response = await self._kloak.async_generate_content(
-            prompt=extraction_prompt, model=LITE
+            prompt=extraction_prompt, model=LITE, response_schema=MaterialSchema
         )
-        rtext = response.text
-        rtext = rtext.replace('`', '').replace('json', '').replace('\n', '')
-        rtext = json.loads(rtext)
-        return rtext.get("material", ""), rtext.get("location", "")
+        return response.text.get("material", ""), response.text.get("target_location", "")
 
     async def _get_company_names_from_search(
             self, material: str, location: str
@@ -85,13 +79,9 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
         ---
         """
         parsed_response = await self._kloak.async_generate_content(
-            prompt=parsing_prompt, model=LITE
+            prompt=parsing_prompt, model=LITE, response_schema=VendorOnlyListSchema
         )
-
-        rtext = parsed_response.text
-        rtext = rtext.replace('`', '').replace('json', '').replace('\n', '')
-        rtext = json.loads(rtext)
-        names = rtext.get("company_names", [])
+        names = parsed_response.text.get("vendors", [])
         logger.info(f"Found potential company names: {names}")
         return names[:15]  # Limit to 10 to avoid excessive parallel calls
 

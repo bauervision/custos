@@ -1,3 +1,4 @@
+from kloak.data import Schema, SchemaEntry, SchemaList
 from kloak.data.knex_pydantic_schema import KnexPydanticSchema
 from pydantic import BaseModel, Field
 
@@ -71,6 +72,49 @@ class VendorDetail(KnexPydanticSchema):
     summary: str = Field(...,
         description="A brief summary explaining why this vendor is a good match based on the initial search.")
 
+VendorDetailSchema = Schema(
+    required = [
+        SchemaEntry(name="name", attr_type=str, description="The name of the potential vendor"),
+        SchemaEntry(name="service_area", attr_type=str,
+                    description="The primary location or geographic service area of the vendor, indicating ability to supply to target location"),
+        SchemaEntry(name="summary", attr_type=str,
+                    description="A brief summary explaining why this vendor is a good match based on the initial search")
+    ],
+    optional= [
+        SchemaEntry(name="website", attr_type=str,
+                    description="The main website URL for the vendor, if found")
+    ]
+)
+
+
+MaterialSchema = Schema(
+    required = [
+        SchemaEntry(name="material", attr_type=str,
+                    description="The specific material the user asked to find"),
+        SchemaEntry(name="target_location", attr_type=str,
+                    description="The location where the material needs to be supplied"),
+    ]
+)
+
+VendorOnlyListSchema = Schema(
+    required = [
+        SchemaEntry(name="vendors", attr_type=SchemaList(sub_type=str),
+                    description="A curated list of potential vendors"),
+    ]
+)
+
+VendorShortListSchema = Schema(
+    required= [
+        SchemaEntry(name="material", attr_type=str,
+                    description="The specific material the user asked to find"),
+        SchemaEntry(name="target_location", attr_type=str,
+                    description="The location where the material needs to be supplied"),
+        SchemaEntry(name="vendors", attr_type=SchemaList(sub_type=str),
+                    description="A curated list of potential vendors"),
+        SchemaEntry(name="discovery_summary", attr_type=str,
+                    description="A brief summary of the discovery ")
+    ]
+)
 
 class VendorShortlist(KnexPydanticSchema):
     """Represents the final, curated shortlist of potential vendors."""
