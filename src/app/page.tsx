@@ -7,6 +7,7 @@ import {
   CATEGORY_EXAMPLES,
   getCategory,
   type CategoryKey,
+  DEFAULT_VETTING_COMPANIES,
 } from "@/lib/categories";
 import CategoryToolbar from "@/components/home/CategoryToolbar";
 import PrescreenDialog from "@/components/home/PrescreenDialog";
@@ -324,60 +325,69 @@ export default function HomePage() {
 
                 {/* Stable extras area (keeps card height identical across modes) */}
                 <div className="mt-3" style={{ minHeight: EXTRAS_MIN_H }}>
-                  {vendorMode === "discovery" ? (
-                    <>
-                      {(prescreen.include.length > 0 ||
-                        prescreen.exclude.length > 0) && (
-                        <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 mb-3">
-                          {/* header row */}
-                          {/* ... */}
+                  {/* Suggested prompts */}
+                  <div className="mt-3">
+                    <div className="mb-1.5 flex items-center gap-2 text-xs text-white/60">
+                      {/* spark icon */}
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="w-3.5 h-3.5 text-emerald-300"
+                        aria-hidden
+                      >
+                        <path
+                          d="M12 2l1.7 4.6L18 8l-4.3 1.4L12 14l-1.7-4.6L6 8l4.3-1.4L12 2Zm6 9 1 2.7L22 15l-3 1 .9 2.6L18 17l-1.9 1.6L17 16l-3-1 3-.3L18 11Z"
+                          fill="currentColor"
+                        />
+                      </svg>
+                      {vendorMode === "vetting"
+                        ? "Previously vetted"
+                        : "Previous prompts"}
+                    </div>
 
-                          {/* Make the chip area scrollable when tall */}
-                          <div className="max-h-24 overflow-y-auto pr-1">
-                            {prescreen.include.length > 0 && (
-                              <div className="mb-1.5">
-                                <div className="mb-1 text-xs font-medium text-emerald-300">
-                                  Include
-                                </div>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {prescreen.include.map((k) => (
-                                    <span
-                                      key={`inc-${k}`}
-                                      className="rounded-full border border-emerald-400/40 bg-emerald-400/15 px-2 py-0.5 text-[11px] text-emerald-200"
-                                    >
-                                      {k}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {prescreen.exclude.length > 0 && (
-                              <div className="mt-2">
-                                <div className="mb-1 text-xs font-medium text-rose-300">
-                                  Exclude
-                                </div>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {prescreen.exclude.map((k) => (
-                                    <span
-                                      key={`exc-${k}`}
-                                      className="rounded-full border border-rose-400/40 bg-rose-400/15 px-2 py-0.5 text-[11px] text-rose-200"
-                                    >
-                                      {k}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Previous prompts ... */}
-                    </>
-                  ) : (
-                    <div className="h-full" />
-                  )}
+                    <ul className="flex flex-wrap gap-2">
+                      {(vendorMode === "vetting"
+                        ? DEFAULT_VETTING_COMPANIES
+                        : examples
+                      ).map((ex) => (
+                        <li key={ex}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setQuery(ex);
+                              setUserEdited(true);
+                              setPromptKey((k) => k + 1); // replay pop
+                              inputRef.current?.focus();
+                            }}
+                            className="group rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-1.5 text-left text-xs text-white/70
+                     hover:bg-white/[0.08] hover:border-emerald-300/40 focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
+                            aria-label={`Use suggested ${
+                              vendorMode === "vetting" ? "company" : "prompt"
+                            }: ${ex}`}
+                          >
+                            <span className="italic opacity-80 group-hover:opacity-100">
+                              “{ex}”
+                            </span>
+                            <span className="ml-2 inline-flex items-center opacity-0 transition-opacity group-hover:opacity-100">
+                              {/* arrow */}
+                              <svg
+                                viewBox="0 0 24 24"
+                                className="w-3.5 h-3.5"
+                                aria-hidden
+                              >
+                                <path
+                                  d="M13 5l7 7-7 7M4 12h15"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
               </motion.div>
             </div>

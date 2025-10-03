@@ -66,6 +66,12 @@ export const CATEGORY_PLACEHOLDER: Record<CategoryKey, string> = {
   other: "Describe what you need…",
 };
 
+export const DEFAULT_VETTING_COMPANIES = [
+  "Aurora Mineral AG",
+  "SinoForge Metals Ltd.",
+  "Kwanza Extraction PLC",
+];
+
 // NEW: example prompts per category (stand-ins for demo)
 export const CATEGORY_EXAMPLES: Record<CategoryKey, string[]> = {
   materials: [
