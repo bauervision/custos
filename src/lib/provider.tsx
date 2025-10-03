@@ -1,12 +1,17 @@
 // src/lib/provider.tsx
 "use client";
 
-import { createContext, useContext, useRef, useState } from "react";
+import { createContext, useContext, useMemo, useRef, useState } from "react";
 import type { VendorMode, Prescreen, Vendor } from "@/lib/types";
+import { VendorAgg } from "@/components/loading/VendorCard";
 
 type ProviderAPI = {
   vendorMode: VendorMode;
   setVendorMode: (m: VendorMode) => void;
+
+  // new: active vetting target (demo or real)
+  vetTarget: VendorAgg | null;
+  setVetTarget: (v: VendorAgg | null) => void;
 
   prescreen: Prescreen;
   setPrescreen: (p: Prescreen) => void;
@@ -23,6 +28,7 @@ const KustosContext = createContext<ProviderAPI | null>(null);
 
 export function KustosProvider({ children }: { children: React.ReactNode }) {
   const [vendorMode, setVendorMode] = useState<VendorMode>("vetting");
+  const [vetTarget, setVetTarget] = useState<VendorAgg | null>(null);
   const [prescreen, setPrescreen] = useState<Prescreen>({
     include: [],
     exclude: [],
@@ -38,11 +44,25 @@ export function KustosProvider({ children }: { children: React.ReactNode }) {
     window.location.href = url.toString();
   };
 
+  const value = useMemo(
+    () => ({
+      vendorMode,
+      setVendorMode,
+      vetTarget,
+      setVetTarget,
+      prescreen,
+      setPrescreen,
+    }),
+    [vendorMode, vetTarget, prescreen]
+  );
+
   return (
     <KustosContext.Provider
       value={{
         vendorMode,
         setVendorMode,
+        vetTarget,
+        setVetTarget,
         prescreen,
         setPrescreen,
         discoveryVendors,

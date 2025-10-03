@@ -44,9 +44,9 @@ export function withAlpha(hex: string, alpha: number): string {
 }
 
 export const riskGradients = {
-  low: "from-emerald-400/80 to-cyan-300/80",
-  medium: "from-amber-300/80 to-yellow-300/80",
-  high: "from-rose-400/80 to-pink-400/80",
+  low: "from-green-400/80 to-green-800/80",
+  medium: "from-amber-300/80 to-yellow-800/80",
+  high: "from-red-400/80 to-red-800/80",
 };
 
 export function riskTier(risk: number) {

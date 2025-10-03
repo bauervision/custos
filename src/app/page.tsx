@@ -73,7 +73,7 @@ export default function HomePage() {
   const seed = query.trim();
   // Reserve space for extras based on selected chips (capped)
   const CHIP_ROW_H = 28; // ~1.75rem row height
-  const EXTRA_BASE = 140; // baseline space (no chips)
+  const EXTRA_BASE = 40; // baseline space (no chips)
   const EXTRA_CAP = 260; // hard cap to prevent layout jumps
 
   const selCount = prescreen.include.length + prescreen.exclude.length;
@@ -293,8 +293,9 @@ export default function HomePage() {
                 />
 
                 {/* CTA row: fixed height, no wrap (prevents bumps) */}
-                <div className="mt-3 flex flex-nowrap items-center justify-between gap-3 min-h-[44px]">
-                  <div className="text-xs text-white/50">
+                <div className="mt-3 flex flex-nowrap items-center gap-3 min-h-[44px]">
+                  {/* Left hint */}
+                  <div className="text-xs text-white/50 shrink-0">
                     Press{" "}
                     <kbd className="rounded border border-white/20 bg-white/10 px-1.5 py-0.5">
                       /
@@ -302,10 +303,62 @@ export default function HomePage() {
                     to focus
                   </div>
 
-                  <div className="flex flex-nowrap items-center gap-2">
+                  {/* Vetting: spacer to push the button to the right */}
+                  {vendorMode === "vetting" && (
+                    <div className="flex-1 min-w-0" />
+                  )}
+
+                  {/* Right side buttons + clamped summary */}
+                  <div className="flex flex-nowrap items-center gap-2 shrink-0 ml-auto">
                     {vendorMode === "discovery" && (
                       <>
+                        {/* Prescreen button (left) */}
                         <PrescreenDialog />
+
+                        {/* INLINE SUMMARY (middle): fixed height, clamped width, single line */}
+                        {(prescreen.include.length > 0 ||
+                          prescreen.exclude.length > 0) && (
+                          <div
+                            className="
+            hidden md:flex items-center
+            h-9                          /* lock height to the row */
+            w-[420px] max-w-[50vw]      /* clamp width so it can't push buttons off */
+            min-w-[240px]               /* gives some room before hiding on small screens */
+            overflow-hidden whitespace-nowrap rounded-lg
+            border border-white/10 bg-white/[0.03] px-2
+            [mask-image:linear-gradient(to_right,black_90%,transparent)]
+          "
+                            title={`Include: ${prescreen.include.join(
+                              ", "
+                            )} | Exclude: ${prescreen.exclude.join(", ")}`}
+                            aria-label={`Active prescreen filters. Include: ${prescreen.include.join(
+                              ", "
+                            )}. Exclude: ${prescreen.exclude.join(", ")}.`}
+                          >
+                            <div className="flex items-center gap-1 overflow-hidden">
+                              {/* Include chips */}
+                              {prescreen.include.map((k) => (
+                                <span
+                                  key={`inc-inline-${k}`}
+                                  className="inline-block rounded-full border border-emerald-400/40 bg-emerald-400/15 px-2 py-0.5 text-[11px] text-emerald-200"
+                                >
+                                  {k}
+                                </span>
+                              ))}
+                              {/* Exclude chips */}
+                              {prescreen.exclude.map((k) => (
+                                <span
+                                  key={`exc-inline-${k}`}
+                                  className="inline-block rounded-full border border-rose-400/40 bg-rose-400/15 px-2 py-0.5 text-[11px] text-rose-200"
+                                >
+                                  {k}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Start with Map (right of summary) */}
                         <a
                           href="/map?zoom=world"
                           className="rounded-lg border border-white/20 px-4 py-2 text-white/90 hover:bg-white/10"
@@ -314,6 +367,8 @@ export default function HomePage() {
                         </a>
                       </>
                     )}
+
+                    {/* Run button (always last, hugs right edge) */}
                     <a
                       href={`/loading/?seed=${encodeURIComponent(seed)}`}
                       className="rounded-lg bg-gradient-to-r from-cyan-400/90 to-emerald-400/90 px-4 py-2 text-black font-semibold hover:from-cyan-300 hover:to-emerald-300"

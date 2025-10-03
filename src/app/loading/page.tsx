@@ -16,6 +16,7 @@ import {
 import { BBox, readAoiFromSession } from "@/lib/aoi";
 
 const TOTAL_MS = 60_000;
+const AURORA = "Aurora Mineral AG";
 
 // Keep map centers identical to your results page
 const COUNTRY_CENTER: Record<string, [number, number]> = {
@@ -32,8 +33,7 @@ const COUNTRY_CENTER: Record<string, [number, number]> = {
 
 /** ───────────────────────────────────────────────────────────
  * TEMP: tier baseline here so loading + results can align.
- * When ready, move this map to `src/data/companyTiers.ts`
- * and import it from both loading/results and the mock stream.
+ * When ready, move to `src/data/companyTiers.ts`.
  * ───────────────────────────────────────────────────────────*/
 type Tier = "LOW" | "MEDIUM" | "HIGH";
 const COMPANY_TIER: Record<string, Tier> = {
@@ -74,6 +74,14 @@ function inBbox(lat: number, lon: number, b: BBox): boolean {
   return lat >= b.south && lat <= b.north && withinLon;
 }
 
+// Client-only wrapper to avoid SSR hydration mismatches
+function ClientOnly({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+  return <>{children}</>;
+}
+
 export default function LoadingPage() {
   const [elapsed, setElapsed] = useState(0);
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -87,6 +95,11 @@ export default function LoadingPage() {
     if (typeof window === "undefined") return "";
     return new URLSearchParams(window.location.search).get("seed") ?? "";
   }, []);
+
+  const isVettingAurora = useMemo(
+    () => seed.trim().toLowerCase() === AURORA.toLowerCase(),
+    [seed]
+  );
 
   // AOI for this page (used when saving the run)
   const aoi = useMemo(() => {
@@ -108,12 +121,31 @@ export default function LoadingPage() {
       if (e >= TOTAL_MS) clearInterval(id);
     }, 200);
 
+    // seed Aurora immediately when vetting (prevents empty grid at t0)
+    if (isVettingAurora) {
+      const base = baselineDeltaForTier(AURORA);
+      vendorMapRef.current.set(makeVendorId(AURORA, "Germany"), {
+        name: AURORA,
+        country: "Germany",
+        keywords: ["rare earth oxides", "REACH compliant", "audited smelter"],
+        breakdown: {
+          finance: base.finance,
+          ethics: base.ethics,
+          logistics: base.logistics,
+        },
+      });
+      setTick((t) => t + 1);
+    }
+
     // streaming via provider
     const stop = providerRef.current.streamSignals({
       totalMs: TOTAL_MS,
       intervalMs: 2000,
       seed,
       onEvent(evt: StreamEvent) {
+        // If vetting Aurora, ignore all non-Aurora events
+        if (isVettingAurora && evt.name !== AURORA) return;
+
         // global keyword counts (for heatmap + word cloud)
         setCounts((prev) => {
           const next = { ...prev };
@@ -128,7 +160,6 @@ export default function LoadingPage() {
         const delta = scoreKeywords(evt.keywords);
 
         if (!prev) {
-          // one-time tier baseline
           const base = baselineDeltaForTier(evt.name);
           map.set(key, {
             name: evt.name,
@@ -160,7 +191,7 @@ export default function LoadingPage() {
       clearInterval(id);
       stop();
     };
-  }, [seed]);
+  }, [seed, isVettingAurora]);
 
   // Sorted & optionally AOI-filtered vendors
   const vendorsSorted: VendorAgg[] = useMemo(() => {
@@ -235,87 +266,104 @@ export default function LoadingPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
       <h1 className="text-2xl font-semibold mb-2">
-        Generating Vendor Landscape…
+        {isVettingAurora
+          ? "Vetting: Aurora Mineral AG"
+          : "Generating Vendor Landscape…"}
       </h1>
       <p className="text-white/70 mb-6">
         Streaming early signals while the full report builds.
       </p>
 
-      {/* Ready CTA or Progress */}
-      {isDone ? (
-        <div className="ready-cta" role="status" aria-live="polite">
-          <div className="ready-ring grid place-items-center">
-            {/* checkmark */}
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              className="relative z-10"
+      {/* Ready CTA or Progress (client-only to avoid hydration mismatch) */}
+      <ClientOnly>
+        {isDone ? (
+          <div className="ready-cta" role="status" aria-live="polite">
+            <div className="ready-ring grid place-items-center">
+              {/* checkmark */}
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                className="relative z-10"
+              >
+                <path
+                  d="M20 7L9 18l-5-5"
+                  fill="none"
+                  stroke="black"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <div>
+              <div className="text-base font-semibold">Report ready</div>
+              <div className="text-xs text-white/70">
+                View the{" "}
+                {isVettingAurora ? "vetting details" : "vendor landscape"}, map
+                & recommendations.
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <a href="/results/" className="cta-primary">
+                View Results
+              </a>
+              <a href="/dashboard/" className="cta-secondary">
+                Summary
+              </a>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="progress-wrap">
+              <div className="progress-bar" style={{ width: `${pct}%` }} />
+              <div className="spark-emitter" style={{ left: `${pct}%` }}>
+                <span className="spark" style={{ left: 0, top: -2 }} />
+                <span className="spark" style={{ left: 2, top: 3 }} />
+                <span className="spark" style={{ left: -3, top: 1 }} />
+              </div>
+            </div>
+            <div
+              className="mt-3 text-sm text-white/60"
+              suppressHydrationWarning
             >
-              <path
-                d="M20 7L9 18l-5-5"
-                fill="none"
-                stroke="black"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-          <div>
-            <div className="text-base font-semibold">Report ready</div>
-            <div className="text-xs text-white/70">
-              View the vendor landscape, map & recommendations.
+              {pct}%
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <a href="/results/" className="cta-primary">
-              View Results
-            </a>
-            <a href="/dashboard/" className="cta-secondary">
-              Summary
-            </a>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="progress-wrap">
-            <div className="progress-bar" style={{ width: `${pct}%` }} />
-            <div className="spark-emitter" style={{ left: `${pct}%` }}>
-              <span className="spark" style={{ left: 0, top: -2 }} />
-              <span className="spark" style={{ left: 2, top: 3 }} />
-              <span className="spark" style={{ left: -3, top: 1 }} />
-            </div>
-          </div>
-          <div className="mt-3 text-sm text-white/60">{pct}%</div>
-        </>
-      )}
+          </>
+        )}
+      </ClientOnly>
 
       {/* Top row: Radial Heatmap + Word Cloud */}
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-white/10 p-4">
-          <div className="mb-3 text-sm text-white/70">Radial Heatmap</div>
-          <RadialHeatmap counts={counts} />
-        </div>
-        <div className="rounded-xl border border-white/10 p-4">
-          <div className="mb-3 text-sm text-white/70">Word Cloud</div>
-          <WordCloud counts={counts} />
-        </div>
-      </div>
-
-      {/* Scrollable vendor grid underneath (fills left→right, wraps) */}
-      <div className="mt-8 rounded-xl border border-white/10">
-        <div className="px-4 py-3 text-sm text-white/70 border-b border-white/10">
-          Live Vendor Results (sorted by recommendation and AOI)
-        </div>
-        <div className="max-h-[420px] overflow-auto p-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {vendorsVisible.map((v) => (
-              <VendorCard key={v.name} v={v} />
-            ))}
+      <ClientOnly>
+        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="rounded-xl border border-white/10 p-4">
+            <div className="mb-3 text-sm text-white/70">Radial Heatmap</div>
+            <RadialHeatmap counts={counts} />
+          </div>
+          <div className="rounded-xl border border-white/10 p-4">
+            <div className="mb-3 text-sm text-white/70">Word Cloud</div>
+            <WordCloud counts={counts} />
           </div>
         </div>
-      </div>
+      </ClientOnly>
+
+      {/* Scrollable vendor grid underneath (fills left→right, wraps) */}
+      <ClientOnly>
+        <div className="mt-8 rounded-xl border border-white/10">
+          <div className="px-4 py-3 text-sm text-white/70 border-b border-white/10">
+            {isVettingAurora
+              ? "Live Vetting Results"
+              : "Live Vendor Results (sorted by recommendation and AOI)"}
+          </div>
+          <div className="max-h-[420px] overflow-auto p-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {vendorsVisible.map((v) => (
+                <VendorCard key={`${v.name}-${v.country}`} v={v} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </ClientOnly>
     </div>
   );
 }
