@@ -36,6 +36,50 @@ const item: Variants = {
   },
 };
 
+// add near top imports (keep your existing ones)
+const NAME_TO_ISO2: Record<string, string> = {
+  "South Africa": "ZA",
+  Namibia: "NA",
+  Botswana: "BW",
+  Germany: "DE",
+  Singapore: "SG",
+  Norway: "NO",
+  Canada: "CA",
+  China: "CN",
+  UAE: "AE",
+};
+
+// Helper: parse "Company[, Country]" → { company, country? }
+function parseVettingInput(s: string) {
+  const raw = s.trim().replace(/^["“”']|["“”']$/g, ""); // strip outer quotes
+  if (!raw) return { company: "", country: "" };
+
+  // If the last comma segment is a known country, split there.
+  const idx = raw.lastIndexOf(",");
+  if (idx !== -1) {
+    const left = raw.slice(0, idx).trim();
+    const right = raw.slice(idx + 1).trim();
+    if (NAME_TO_ISO2[right]) {
+      return { company: left, country: right };
+    }
+  }
+  return { company: raw, country: "" };
+}
+
+// Helper: build href depending on mode
+function buildLoadingHref(vendorMode: "vetting" | "discovery", seed: string) {
+  if (vendorMode === "vetting") {
+    const { company, country } = parseVettingInput(seed);
+    const params = new URLSearchParams();
+    params.set("mode", "vet");
+    if (company) params.set("company", company);
+    if (country) params.set("country", country);
+    return `/loading/?${params.toString()}`;
+  }
+  // discovery path unchanged
+  return `/loading/?seed=${encodeURIComponent(seed)}`;
+}
+
 export default function HomePage() {
   const { vendorMode, setVendorMode, prescreen, setPrescreen } = useKustos();
 
@@ -121,6 +165,9 @@ export default function HomePage() {
     return () => window.removeEventListener("resize", onResize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const isVettingEmpty =
+    vendorMode === "vetting" && parseVettingInput(seed).company === "";
 
   return (
     <motion.main
@@ -369,12 +416,23 @@ export default function HomePage() {
                     )}
 
                     {/* Run button (always last, hugs right edge) */}
-                    <a
-                      href={`/loading/?seed=${encodeURIComponent(seed)}`}
-                      className="rounded-lg bg-gradient-to-r from-cyan-400/90 to-emerald-400/90 px-4 py-2 text-black font-semibold hover:from-cyan-300 hover:to-emerald-300"
+                    <button
+                      type="button"
+                      onClick={() =>
+                        (window.location.href = buildLoadingHref(
+                          vendorMode,
+                          seed
+                        ))
+                      }
+                      disabled={isVettingEmpty}
+                      className={`rounded-lg px-4 py-2 font-semibold ${
+                        isVettingEmpty
+                          ? "bg-white/20 text-white/60 cursor-not-allowed"
+                          : "bg-gradient-to-r from-cyan-400/90 to-emerald-400/90 text-black hover:from-cyan-300 hover:to-emerald-300"
+                      }`}
                     >
                       {vendorMode === "vetting" ? "Run Vetting" : "Run Report"}
-                    </a>
+                    </button>
                   </div>
                 </div>
 
@@ -408,6 +466,8 @@ export default function HomePage() {
                           <button
                             type="button"
                             onClick={() => {
+                              if (vendorMode !== "vetting")
+                                setVendorMode("vetting");
                               setQuery(ex);
                               setUserEdited(true);
                               setPromptKey((k) => k + 1); // replay pop

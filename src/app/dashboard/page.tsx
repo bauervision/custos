@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { loadLatestRun } from "@/lib/results";
 import type { VendorAgg } from "@/components/loading/VendorCard";
 import VendorCard from "@/components/loading/VendorCard";
+import VettingHeroCard from "@/components/loading/VettingHeroCard"; // ← NEW
 import Donut from "@/components/dashboard/Donut";
 import { recommendationScore, riskFromBreakdown } from "@/lib/scoring";
 import { riskTier, riskGradients } from "@/lib/palette";
@@ -62,6 +63,34 @@ export default function DashboardPage() {
     | undefined;
   const seedText = (data as any)?.seed as string | undefined;
   const runDate = new Date((data?.createdAt ?? Date.now()) as number);
+
+  // -------- Vetting mode detection + selected vendor for hero --------
+  const parsedCompany = useMemo(() => {
+    if (!seedText) return "";
+    const m = seedText.match(/^vet:\s*([^,]+)(?:,\s*(.+))?/i);
+    return m?.[1]?.trim() || "";
+  }, [seedText]);
+
+  const allSameName =
+    vendors.length > 0 && new Set(vendors.map((v) => v.name)).size === 1;
+
+  const isVettingMode = /^vet:/i.test(seedText || "") || allSameName;
+
+  // choose hero vendor:
+  const heroVendor: VendorAgg | null = useMemo(() => {
+    if (!vendors.length) return null;
+    // 1) try seed name
+    if (parsedCompany) {
+      const exact = vendors.find(
+        (v) => v.name.toLowerCase() === parsedCompany.toLowerCase()
+      );
+      if (exact) return exact;
+    }
+    // 2) if all names same, just use first
+    if (allSameName) return vendors[0];
+    // 3) else top by recommendation
+    return sorted[0] ?? null;
+  }, [vendors, parsedCompany, allSameName, sorted]);
 
   // --- Markdown report block you already had ---
   const mdReport = useMemo(() => {
@@ -252,7 +281,6 @@ export default function DashboardPage() {
     } catch {}
   }
 
-  // NEW: copy/download handlers for the narrative
   function copyNarrative() {
     const t = [
       "Comprehensive Vendor Narrative",
@@ -337,9 +365,6 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Summary & Recommendations</h1>
         <div className="flex gap-2">
-          <a href="/results" className="cta-primary">
-            View Map
-          </a>
           <button
             onClick={downloadJSON}
             className="rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/20"
@@ -349,90 +374,75 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Top Picks — Highlighted */}
-      <div className="mt-10">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="text-2xl text-white/70">Top Recommendations</div>
+      {/* Top section: Vetting → Hero, else Top Recommendations */}
+      {isVettingMode ? (
+        <div className="mt-10">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-2xl text-white/70">Vetting Summary</div>
+          </div>
+          {/* Reuse the hero card; progress is complete on dashboard */}
+          {heroVendor && (
+            <VettingHeroCard
+              v={heroVendor}
+              preferredCountry={heroVendor.country}
+              isComplete
+              progressPct={100}
+            />
+          )}
         </div>
+      ) : (
+        <div className="mt-10">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-2xl text-white/70">Top Recommendations</div>
+          </div>
 
-        {/* Section frame with subtle glow */}
-        <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-emerald-400/30 via-cyan-300/30 to-purple-400/30">
-          <div className="rounded-2xl bg-white/[0.03] p-4 border border-white/10">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {top3.map((v, i) => {
-                const tier = riskTier(riskFromBreakdown(v.breakdown));
-                const gradient = riskGradients[tier];
-                const rank = i + 1;
-                const slug = v.name.toLowerCase().replace(/\s+/g, "-");
-                return (
-                  <div
-                    key={v.name}
-                    className={`
-                relative rounded-xl border border-white/10 bg-white/[0.04]
-                shadow-[0_10px_30px_rgba(0,0,0,0.3)]
-                hover:shadow-[0_18px_44px_rgba(0,0,0,0.4)] transition-shadow
-              `}
-                  >
-                    {/* Risk-tinted halo */}
+          {/* Section frame with subtle glow */}
+          <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-emerald-400/30 via-cyan-300/30 to-purple-400/30">
+            <div className="rounded-2xl bg-white/[0.03] p-4 border border-white/10">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {top3.map((v, i) => {
+                  const tier = riskTier(riskFromBreakdown(v.breakdown));
+                  const gradient = riskGradients[tier];
+                  const rank = i + 1;
+                  const slug = v.name.toLowerCase().replace(/\s+/g, "-");
+                  return (
                     <div
-                      className={`pointer-events-none absolute -inset-0.5 rounded-xl blur-xl opacity-30 bg-gradient-to-r ${gradient}`}
-                      aria-hidden
-                    />
-
-                    {/* Rank badge */}
-                    <div className="absolute -top-2 -left-2 z-20">
+                      key={v.name}
+                      className="
+                        relative rounded-xl border border-white/10 bg-white/[0.04]
+                        shadow-[0_10px_30px_rgba(0,0,0,0.3)]
+                        hover:shadow-[0_18px_44px_rgba(0,0,0,0.4)] transition-shadow
+                      "
+                    >
+                      {/* Risk-tinted halo */}
                       <div
-                        className={`rounded-full px-2.5 py-1 text-xs font-semibold text-black bg-gradient-to-r ${gradient} shadow`}
-                      >
-                        #{rank}
+                        className={`pointer-events-none absolute -inset-0.5 rounded-xl blur-xl opacity-30 bg-gradient-to-r ${gradient}`}
+                        aria-hidden
+                      />
+
+                      {/* Rank badge */}
+                      <div className="absolute -top-2 -left-2 z-20">
+                        <div
+                          className={`rounded-full px-2.5 py-1 text-xs font-semibold text-black bg-gradient-to-r ${gradient} shadow`}
+                        >
+                          #{rank}
+                        </div>
+                      </div>
+
+                      {/* VendorCard content */}
+                      <div className="relative z-10">
+                        <Link key={v.name} href={`/vendor/${slug}`}>
+                          <VendorCard v={v} />
+                        </Link>
                       </div>
                     </div>
-
-                    {/* VendorCard content */}
-                    <div className="relative z-10">
-                      <Link key={v.name} href={`/vendor/${slug}`}>
-                        <VendorCard v={v} />
-                      </Link>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* KPIs */}
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-          <div className="text-xs uppercase tracking-wide text-white/60">
-            Vendors surfaced
-          </div>
-          <div className="mt-1 text-2xl font-semibold">{totalVendors}</div>
-        </div>
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-          <div className="text-xs uppercase tracking-wide text-white/60">
-            Avg recommendation
-          </div>
-          <div className="mt-1 text-2xl font-semibold">{avgRec}/100</div>
-          <div className="text-xs text-white/60">Avg risk: {avgRisk}</div>
-        </div>
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-          <div className="text-xs uppercase tracking-wide text-white/60">
-            Top signals
-          </div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {topKeywords.map(([k, v]) => (
-              <span
-                key={k}
-                className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[11px] text-white/80"
-              >
-                {k} <span className="text-white/40">×{v}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Middle: Risk mix + Prescriptive bullets */}
       <div className="mt-8 grid gap-6 lg:grid-cols-[280px_1fr]">
