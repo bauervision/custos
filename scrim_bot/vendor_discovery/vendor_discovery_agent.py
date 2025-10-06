@@ -14,6 +14,10 @@ from scrim_bot.schemas import MaterialSchema, VendorDetail, VendorOnlyListSchema
 from scrim_bot.utils.enums import FLASH, LITE
 
 
+TARGET_VENDOR_COUNT = 8  # Aim for at least this many *final* vendors
+MAX_INITIAL_SEARCH_RESULTS = 20  # Limit the num of raw company names extracted per search round
+
+
 class VendorDiscoveryAgent(Agent[VendorShortlist]):
     def __init__(
             self,
@@ -85,6 +89,81 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
         logger.info(f"Found potential company names: {names}")
         return names[:15]  # Limit to 10 to avoid excessive parallel calls
 
+    async def _get_company_names_from_search_round(self, material: str, location: str, search_model: SupportedModels,
+                                                   query_strategy: str, num_options_target: int = 10) -> list[str]:
+        """
+        :param material: The material that we are searching for
+        :param location: The location the material is desired out
+        :param search_model: Gemini model to use
+        :param query_strategy: either "local_proximity" or "delivery_focus", to do different types of searches
+        :param num_options_target: how many vendors to try to get
+        :return: Returns a list of vendors
+        """
+        logger.debug(f"Performing {query_strategy} search for {material} in {location} using {search_model}.")
+        search_prompts = []
+
+        if query_strategy == "local_proximity":
+            search_prompts.append(
+                f"Find a list of suppliers for {material} in or near {location}, try to get at least {num_options_target} potential options. Prioritize companies with a physical presence in {location}."
+            )
+            search_prompts.append(
+                f"List major {material} manufacturers and distributors operating primarily in {location} and surrounding areas."
+            )
+        elif query_strategy == "delivery_focus":
+            search_prompts.append(
+                f"Find companies that supply and deliver {material} to {location}, even if they are not physically located there. Aim for {num_options_target} options."
+            )
+            search_prompts.append(
+                f"Who are the main bulk {material} suppliers that ship to {location} or serve the {location} region for large-scale projects?"
+            )
+            search_prompts.append(
+                f"List industrial {material} distributors with strong logistics capabilities for {location} and surrounding areas."
+            )
+        else:
+            logger.warning(f"Unknown query_strategy: {query_strategy}")
+            return []
+
+        all_search_results_text = []
+        async with asyncio.TaskGroup() as tg:
+            tasks = [
+                tg.create_task(
+                    self.google_search_agent.async_chat(
+                        prompt=search_prompt,
+                        model=search_model
+                    )
+                )
+                for search_prompt in search_prompts
+            ]
+        all_search_results_text = [task.result() for task in tasks]
+        """
+        for search_prompt in search_prompts:
+            rtext = await self.google_search_agent.async_chat(
+                prompt=search_prompt,
+                model=search_model
+            )
+            all_search_results_text.append(rtext)
+        """
+
+        combined_search_text = "\n".join(all_search_results_text)
+        parsing_prompt = f"""
+                From the following search result texts, extract a list of unique company names that seem to be suppliers of '{material}'.
+                Focus on identifying established companies rather than small local businesses unless explicitly mentioned as a large supplier.
+                Return a simple JSON object with a single key "vendors" which holds a list of strings.
+
+                Search result texts:
+                ---
+                {combined_search_text}
+                ---
+                """
+        parsed_response = await self._kloak.async_generate_content(
+            prompt=parsing_prompt,
+            model=LITE,
+            response_schema=VendorOnlyListSchema
+        )
+        names = parsed_response.text.get("vendors", [])
+        logger.info(f"Found potential company names from {query_strategy} round: {names}")
+        return names[:MAX_INITIAL_SEARCH_RESULTS]  # Limit for this round
+
     async def chat(self, prompt: str | None = None, **kwargs) -> VendorShortlist:
         logger.info(f"Vendor Discovery Agent starting for prompt: {prompt}")
 
@@ -97,8 +176,19 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
                 discovery_summary="Could not determine the material and/or location from your request. Please be more specific.",
             )
 
-        company_names = await self._get_company_names_from_search(material, location)
-        if not company_names:
+        # First discovery round, optimized for speed
+        initial_company_names = await self._get_company_names_from_search_round(material, location, LITE,
+                                                                                "local_proximity")
+        all_potential_company_names = initial_company_names.copy()
+
+        # Secondary Discovery Round (using FLASH and delivery focused search)
+        if len(all_potential_company_names) < TARGET_VENDOR_COUNT:
+            logger.info("Triggering secondary discovery round using flash")
+            secondary_company_names = await self._get_company_names_from_search_round(material, location, FLASH,
+                                                                                      "delivery_focus")
+            all_potential_company_names.extend(secondary_company_names)
+
+        if not all_potential_company_names:
             return VendorShortlist(
                 material_requested=material,
                 target_location=location,
@@ -107,7 +197,7 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
             )
 
         logger.info(
-            f"Starting detailed research on {len(company_names)} companies..."
+            f"Starting detailed research on {len(all_potential_company_names)} companies..."
         )
 
         async with asyncio.TaskGroup() as tg:
@@ -117,7 +207,7 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
                         self._kloak, name, material, location, self._history_manager
                     ).async_chat()
                 )
-                for name in company_names
+                for name in all_potential_company_names
             ]
         vendor_details: List[VendorDetail] = [task.result() for task in tasks]
         """
@@ -138,7 +228,7 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
                 final_vendors.append(vendor)
                 seen_names.add(vendor['name'].lower())
 
-        summary = f"Found {len(final_vendors)} potential vendors for {material} in {location} after reviewing an initial list of {len(company_names)} prospects."
+        summary = f"Found {len(final_vendors)} potential vendors for {material} in {location} after reviewing an initial list of {len(all_potential_company_names)} prospects."
 
         return VendorShortlist(
             material_requested=material,
