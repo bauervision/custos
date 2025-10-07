@@ -1,5 +1,5 @@
 import asyncio
-from typing import List
+from typing import List, Set
 
 from kloak import Kloak
 from kloak.agent import Agent
@@ -12,9 +12,10 @@ from scrim_bot.agents.gsearch_agent import GoogleSearchAgent
 from scrim_bot.prompts import VENDOR_DISCOVERY_INS
 from scrim_bot.schemas import MaterialSchema, VendorDetail, VendorOnlyListSchema, VendorShortlist
 from scrim_bot.utils.enums import FLASH, LITE
+from scrim_bot.utils.firestore_util import create_discovery_request, update_discovery_request
 
 
-TARGET_VENDOR_COUNT = 8  # Aim for at least this many *final* vendors
+TARGET_VENDOR_COUNT = 8  # Aim for at least this many *final* vetted vendors
 MAX_INITIAL_SEARCH_RESULTS = 20  # Limit the num of raw company names extracted per search round
 
 
@@ -92,6 +93,7 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
     async def _get_company_names_from_search_round(self, material: str, location: str, search_model: SupportedModels,
                                                    query_strategy: str, num_options_target: int = 10) -> list[str]:
         """
+        Performs a search round with a specific model and query strategy, generating multiple queries.
         :param material: The material that we are searching for
         :param location: The location the material is desired out
         :param search_model: Gemini model to use
@@ -157,17 +159,21 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
                 """
         parsed_response = await self._kloak.async_generate_content(
             prompt=parsing_prompt,
-            model=LITE,
+            model=LITE, # Using LITE for parsing as it's a structured extraction task, not complex reasoning
             response_schema=VendorOnlyListSchema
         )
         names = parsed_response.text.get("vendors", [])
         logger.info(f"Found potential company names from {query_strategy} round: {names}")
-        return names[:MAX_INITIAL_SEARCH_RESULTS]  # Limit for this round
+        # Use a Set to handle potential duplicates introduced by multiple search prompts
+        return list(set(names[:MAX_INITIAL_SEARCH_RESULTS])) # Limit for this round
 
     async def chat(self, prompt: str | None = None, **kwargs) -> VendorShortlist:
         logger.info(f"Vendor Discovery Agent starting for prompt: {prompt}")
 
         material, location = await self._extract_material_and_location(prompt)
+        discovery_request_doc_ref = create_discovery_request(
+            initial_prompt=prompt, material=material, location=location
+        )
         if not material or not location:
             return VendorShortlist(
                 material_requested=material or "Unknown",
@@ -180,6 +186,8 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
         initial_company_names = await self._get_company_names_from_search_round(material, location, LITE,
                                                                                 "local_proximity")
         all_potential_company_names = initial_company_names.copy()
+        discovery_request_doc_ref = await discovery_request_doc_ref
+        dis_req_id = discovery_request_doc_ref.id
 
         # Secondary Discovery Round (using FLASH and delivery focused search)
         if len(all_potential_company_names) < TARGET_VENDOR_COUNT:
@@ -204,7 +212,7 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
             tasks = [
                 tg.create_task(
                     CompanyDetailAgent(
-                        self._kloak, name, material, location, self._history_manager
+                        self._kloak, name, material, location, self._history_manager, dis_req_id
                     ).async_chat()
                 )
                 for name in all_potential_company_names
@@ -222,13 +230,22 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
         """
 
         final_vendors = []
+        final_vendor_fire_ids = []
         seen_names = set()
         for vendor in vendor_details:
-            if vendor['website_url'] and vendor['name'].lower() not in seen_names:
+            if vendor.get('website_url') and vendor['name'].lower() not in seen_names:
                 final_vendors.append(vendor)
+                final_vendor_fire_ids.append(vendor['vendor_firestore_id'])
                 seen_names.add(vendor['name'].lower())
 
+
         summary = f"Found {len(final_vendors)} potential vendors for {material} in {location} after reviewing an initial list of {len(all_potential_company_names)} prospects."
+        udr = asyncio.create_task(update_discovery_request(dis_req_id, {
+            "status": "completed",
+            "discovery_summary": summary,
+            "final_vendor_ids": final_vendor_fire_ids,
+            "num_companies": len(final_vendors)
+        }))
 
         return VendorShortlist(
             material_requested=material,

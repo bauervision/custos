@@ -71,6 +71,7 @@ class VendorDetail(KnexPydanticSchema):
     website_url: str | None = Field(None, description="The main website URL for the vendor, if found.")
     summary: str = Field(...,
         description="A brief summary explaining why this vendor is a good match based on the initial search.")
+    vendor_firestore_id: str | None = Field(None, description="The Firestore doc ID for this vendor, if saved")
 
 VendorDetailSchema = Schema(
     required = [
@@ -82,7 +83,9 @@ VendorDetailSchema = Schema(
     ],
     optional= [
         SchemaEntry(name="website", attr_type=str,
-                    description="The main website URL for the vendor, if found")
+                    description="The main website URL for the vendor, if found"),
+        SchemaEntry(name="vendor_firestore_id", attr_type=str,
+                    description="The Firestore document ID for this vendor, if saved.")
     ]
 )
 
