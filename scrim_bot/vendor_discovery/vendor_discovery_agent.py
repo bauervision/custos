@@ -138,14 +138,6 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
                 for search_prompt in search_prompts
             ]
         all_search_results_text = [task.result() for task in tasks]
-        """
-        for search_prompt in search_prompts:
-            rtext = await self.google_search_agent.async_chat(
-                prompt=search_prompt,
-                model=search_model
-            )
-            all_search_results_text.append(rtext)
-        """
 
         combined_search_text = "\n".join(all_search_results_text)
         parsing_prompt = f"""
@@ -224,16 +216,6 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
 
             ]
         vendor_details: List[VendorDetail] = [task.result() for task in tasks]
-        """
-        cresults = []
-        for name in company_names:
-            cresults.append(CompanyDetailAgent(
-                self._kloak, name, material, location, self._history_manager
-            ).chat()
-                            )
-
-        vendor_details = cresults
-        """
 
         final_vendors = []
         final_vendor_fire_ids = []
