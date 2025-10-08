@@ -8,6 +8,7 @@ from scrim_bot.agents.gsearch_agent import GoogleSearchAgent
 from scrim_bot.prompts import COMPANY_DETAIL_INSTRUCTIONS
 from scrim_bot.schemas import VendorDetail
 from scrim_bot.utils.enums import FLASH, LITE
+from scrim_bot.utils.firestore_util import get_or_create_vendor
 
 
 class CompanyDetailAgent(Agent[VendorDetail]):
@@ -18,6 +19,7 @@ class CompanyDetailAgent(Agent[VendorDetail]):
         material: str,
         location: str,
         history_manager: HistoryManagement,
+        discovery_request_id: str | None = None,
     ):
         """
         Initializes a focused agent to research a single company.
@@ -28,6 +30,7 @@ class CompanyDetailAgent(Agent[VendorDetail]):
             material (str): The material we are looking for.
             location (str): The target location for supply.
             history_manager (HistoryManagement): The history manager.
+            discovery_request_id (str | None): The ID of the discovery request this detailing is part of.
         """
         super().__init__(
             kloak=kloak,
@@ -41,6 +44,7 @@ class CompanyDetailAgent(Agent[VendorDetail]):
         self.google_search_agent = GoogleSearchAgent(
             agent_name="company_detail_gsearch", agent_model=LITE
         )
+        self.discovery_request_id = discovery_request_id
 
     @property
     def agent_description(self) -> str:
@@ -69,4 +73,18 @@ class CompanyDetailAgent(Agent[VendorDetail]):
             f"Company Name: {self.company_name}. "
             f"Find out if they supply '{self.material}' to '{self.location}'."
         )
-        return await super().async_chat(prompt=company_query, **kwargs)
+        # Call the base Agent's async_chat to get the initial VendorDetail from LLM
+        llm_vendor_detail: VendorDetail = await super().async_chat(prompt=company_query, **kwargs)
+
+        # Now, interact with Firestore to get or create the canonical vendor document
+        vendor_doc_ref = await get_or_create_vendor(
+            name=llm_vendor_detail['name'],
+            website_url=llm_vendor_detail['website_url'],
+            primary_offering=llm_vendor_detail['primary_offering'],
+            location_or_service_area=llm_vendor_detail['location_or_service_area'],
+            discovered_in_request_id=self.discovery_request_id,
+        )
+
+        # Update the VendorDetail object with the Firestore document ID
+        llm_vendor_detail['vendor_firestore_id'] = vendor_doc_ref.id
+        return llm_vendor_detail
