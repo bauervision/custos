@@ -68,6 +68,7 @@ class CompanyDetailAgent(Agent[VendorDetail]):
         """
         Runs the detail-gathering task. The prompt to this agent is the company name.
         """
+        # The main prompt is set in the property; the chat prompt is the specific query.
         company_query = (
             f"Company Name: {self.company_name}. "
             f"Find out if they supply '{self.material}' to '{self.location}'."

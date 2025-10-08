@@ -1,4 +1,5 @@
 import asyncio
+import json
 from typing import List, Set
 
 from kloak import Kloak
@@ -167,6 +168,7 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
         # Use a Set to handle potential duplicates introduced by multiple search prompts
         return list(set(names[:MAX_INITIAL_SEARCH_RESULTS])) # Limit for this round
 
+
     async def chat(self, prompt: str | None = None, **kwargs) -> VendorShortlist:
         logger.info(f"Vendor Discovery Agent starting for prompt: {prompt}")
 
@@ -174,6 +176,7 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
         discovery_request_doc_ref = create_discovery_request(
             initial_prompt=prompt, material=material, location=location
         )
+
         if not material or not location:
             return VendorShortlist(
                 material_requested=material or "Unknown",
@@ -197,6 +200,7 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
             all_potential_company_names.extend(secondary_company_names)
 
         if not all_potential_company_names:
+
             return VendorShortlist(
                 material_requested=material,
                 target_location=location,
@@ -206,6 +210,7 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
 
         logger.info(
             f"Starting detailed research on {len(all_potential_company_names)} companies..."
+
         )
 
         async with asyncio.TaskGroup() as tg:
@@ -216,6 +221,7 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
                     ).async_chat()
                 )
                 for name in all_potential_company_names
+
             ]
         vendor_details: List[VendorDetail] = [task.result() for task in tasks]
         """
@@ -246,6 +252,7 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
             "final_vendor_ids": final_vendor_fire_ids,
             "num_companies": len(final_vendors)
         }))
+
 
         return VendorShortlist(
             material_requested=material,
@@ -306,3 +313,4 @@ class VendorDiscoveryAgent(Agent[VendorShortlist]):
             vendors=final_vendors,
             discovery_summary=summary,
         )
+

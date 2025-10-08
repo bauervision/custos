@@ -1,6 +1,6 @@
 from kloak.data import Schema, SchemaEntry, SchemaList
 from kloak.data.knex_pydantic_schema import KnexPydanticSchema
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 
 class ResearchReport(KnexPydanticSchema):
@@ -118,6 +118,7 @@ VendorShortListSchema = Schema(
                     description="A brief summary of the discovery ")
     ]
 )
+
 
 class VendorShortlist(KnexPydanticSchema):
     """Represents the final, curated shortlist of potential vendors."""
