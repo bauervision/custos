@@ -19,6 +19,7 @@ dependencies = [
     "fastapi[standard]>=0.116.2",
     "typing-extensions>=4.15.0",
     "rich>=14.1.0",
+    "google-cloud-firestore>=2.21.0",
 ]
 authors = [
     { name = "Damon Streat", email = "dj.streat@knexus.ai" },
