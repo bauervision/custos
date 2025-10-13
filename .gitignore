@@ -204,3 +204,4 @@ fabric.properties
 /kloak/evaluation/afloat/afloat_results/
 /kloak/evaluation/afloat/afloat_eval_metrics/
 /babel_results
+node_modules
