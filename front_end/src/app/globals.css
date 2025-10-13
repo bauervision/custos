@@ -1,0 +1,302 @@
+@import "tailwindcss";
+
+/* Leaflet core + draw CSS */
+@import "leaflet/dist/leaflet.css";
+@import "leaflet-draw/dist/leaflet.draw.css";
+
+/* Basic page background to match a data viz vibe */
+:root {
+  --bg: #0b0f14;
+  --fg: #e6edf3;
+}
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.bg-grid {
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    rgba(255, 255, 255, 0.06) 1px,
+    transparent 0
+  );
+  background-size: 28px 28px;
+}
+
+/* Marquee animation for keyword ticker */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee {
+  overflow: hidden;
+  position: relative;
+}
+.marquee-track {
+  display: flex;
+  gap: 0.5rem;
+  width: max-content;
+  will-change: transform;
+  animation: marquee 28s linear infinite;
+}
+.marquee-track.reverse {
+  animation-direction: reverse;
+}
+
+/* Glow progress bar + spark emitter */
+.progress-wrap {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 255, 200, 0.9),
+    rgba(100, 255, 180, 0.9),
+    rgba(180, 255, 160, 0.9)
+  );
+  filter: drop-shadow(0 0 10px rgba(0, 255, 200, 0.5));
+  background-size: 200% 100%;
+  animation: progressShimmer 2.2s linear infinite;
+}
+@keyframes progressShimmer {
+  from {
+    background-position: 0% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+.spark-emitter {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.spark {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(0, 255, 200, 0.8) 60%,
+    rgba(0, 0, 0, 0) 70%
+  );
+  filter: drop-shadow(0 0 6px rgba(0, 255, 200, 0.7));
+  animation: sparkShoot 900ms ease-out infinite;
+}
+.spark:nth-child(2) {
+  animation-delay: 150ms;
+}
+.spark:nth-child(3) {
+  animation-delay: 300ms;
+}
+@keyframes sparkShoot {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  60% {
+    transform: translate(18px, -14px) scale(0.85);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(32px, -24px) scale(0.6);
+    opacity: 0;
+  }
+}
+
+/* ----- Success CTA styles ----- */
+.ready-cta {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.4));
+  padding: 12px 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.ready-ring {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: radial-gradient(
+      circle at 50% 50%,
+      rgba(0, 255, 200, 0.25),
+      rgba(0, 0, 0, 0) 60%
+    ),
+    conic-gradient(
+      from 0deg,
+      rgba(0, 255, 200, 0.9),
+      rgba(100, 255, 180, 0.9),
+      rgba(180, 255, 160, 0.9),
+      rgba(0, 255, 200, 0.9)
+    );
+  filter: drop-shadow(0 0 12px rgba(0, 255, 200, 0.35));
+  animation: readySpin 8s linear infinite;
+}
+.ready-ring::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 999px;
+  background: #0b0f14;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+@keyframes readySpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cta-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #000;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background-image: linear-gradient(
+    90deg,
+    rgba(0, 255, 200, 0.95),
+    rgba(120, 255, 200, 0.95),
+    rgba(180, 255, 160, 0.95)
+  );
+  box-shadow: 0 8px 30px rgba(0, 255, 200, 0.25);
+  transition: transform 0.06s ease, box-shadow 0.2s ease;
+}
+.cta-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 36px rgba(0, 255, 200, 0.32);
+}
+.cta-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.9);
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+@keyframes custos-shine {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateX(140%);
+    opacity: 0;
+  }
+}
+.animate-custos-shine {
+  animation: custos-shine 1.2s ease-out infinite;
+}
+
+@keyframes custos-shine {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateX(140%);
+    opacity: 0;
+  }
+}
+.animate-custos-shine {
+  animation: custos-shine 1.2s ease-out infinite;
+}
+
+/* Tactile nav links */
+.navlink {
+  @apply relative px-3 py-1 rounded-md transition-colors duration-200
+         hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400;
+}
+.navlink::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 6px;
+  height: 2px;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s ease;
+  background: linear-gradient(
+    90deg,
+    rgba(251, 191, 36, 0.9),
+    rgba(110, 231, 183, 0.9),
+    rgba(34, 211, 238, 0.9)
+  );
+  border-radius: 9999px;
+  opacity: 0.9;
+}
+.navlink:hover::after {
+  transform: scaleX(1);
+}
+.navlink[aria-current="page"] {
+  @apply bg-white/10;
+}
+.navlink[aria-current="page"]::after {
+  transform: scaleX(1);
+}
+
+/* Base gradient text */
+.brand-custos {
+  position: relative;
+  display: inline-block;
+  font-weight: 700;
+  font-size: 1.25rem; /* text-xl */
+  letter-spacing: 0.02em;
+  line-height: 1;
+  background: linear-gradient(90deg, #fbbf24 0%, #6ee7b7 50%, #22d3ee 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* styles/globals.css */
+@keyframes prompt-pop {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+  30% {
+    transform: scale(1.015);
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.18);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+.animate-prompt-pop {
+  animation: prompt-pop 0.45s ease;
+}

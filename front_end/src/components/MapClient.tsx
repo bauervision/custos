@@ -1,0 +1,329 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MapContainer, TileLayer, useMap, Marker, Popup } from "react-leaflet";
+import L from "leaflet";
+import "leaflet-draw";
+import { patchLeafletIcons } from "@/lib/leaflet";
+import { DARK_TILE } from "@/lib/tiles";
+import { writeAoiToSession } from "@/lib/aoi";
+
+// ─────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────
+type AoiSummary = {
+  type: "Polygon" | "Rectangle";
+  bounds: { south: number; west: number; north: number; east: number };
+  center: { lat: number; lon: number };
+  vertices: number;
+  geojson: any;
+};
+
+type MarkerInput = { lat: number; lng: number; label?: string };
+
+type MapClientProps = {
+  // Vetting-mode goodies
+  markers?: MarkerInput[];
+  fitToMarkers?: boolean;
+  height?: number | string;
+
+  // Discovery defaults (AOI tools + panel)
+  showAoi?: boolean; // default true
+
+  // Fallbacks if no markers
+  initialCenter?: [number, number];
+  initialZoom?: number;
+};
+
+// ─────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────
+function fmt(n: number) {
+  return n.toFixed(4);
+}
+
+function FitToMarkers({
+  markers,
+  fit,
+}: {
+  markers: MarkerInput[];
+  fit: boolean;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!fit || !markers?.length) return;
+
+    if (markers.length === 1) {
+      const { lat, lng } = markers[0];
+      // Country-scale zoom feels good for vetting
+      map.setView(new L.LatLng(lat, lng), Math.max(4, map.getZoom() || 4), {
+        animate: true,
+      });
+    } else {
+      const b = L.latLngBounds(markers.map((m) => [m.lat, m.lng]));
+      map.fitBounds(b.pad(0.25), { animate: true });
+    }
+  }, [fit, markers, map]);
+
+  return null;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Draw controls (Discovery only)
+// ─────────────────────────────────────────────────────────────
+function DrawControls({
+  onChange,
+  setClearRef,
+}: {
+  onChange: (summary?: AoiSummary) => void;
+  setClearRef: (fn: () => void) => void;
+}) {
+  const map = useMap();
+  const drawn = useRef(L.featureGroup());
+
+  useEffect(() => {
+    map.addLayer(drawn.current);
+
+    const control = new (L as any).Control.Draw({
+      position: "topleft",
+      draw: {
+        polygon: { allowIntersection: false, showArea: true },
+        rectangle: {},
+        marker: false,
+        circle: false,
+        polyline: false,
+        circlemarker: false,
+      },
+      edit: {
+        featureGroup: drawn.current,
+        edit: true,
+        remove: true,
+      },
+    });
+    map.addControl(control);
+
+    const summarize = (layer: any): AoiSummary | undefined => {
+      if (!layer) return undefined;
+      const gj = layer.toGeoJSON();
+      const b = layer.getBounds?.() ?? drawn.current.getBounds?.();
+      if (!b) return undefined;
+      const c = b.getCenter();
+      const ll = (layer.getLatLngs?.() ?? []) as any[];
+      const verts =
+        Array.isArray(ll) && ll.length
+          ? Array.isArray(ll[0])
+            ? ll[0].length
+            : ll.length
+          : 0;
+      return {
+        type: layer instanceof (L as any).Rectangle ? "Rectangle" : "Polygon",
+        bounds: {
+          south: b.getSouth(),
+          west: b.getWest(),
+          north: b.getNorth(),
+          east: b.getEast(),
+        },
+        center: { lat: c.lat, lon: c.lng },
+        vertices: verts,
+        geojson: gj,
+      };
+    };
+
+    const onCreated = (e: any) => {
+      drawn.current.clearLayers();
+      drawn.current.addLayer(e.layer);
+      map.fitBounds(e.layer.getBounds?.() ?? drawn.current.getBounds());
+      onChange(summarize(e.layer));
+    };
+
+    const onEdited = (e: any) => {
+      let first: any;
+      e.layers.eachLayer((l: any) => {
+        first = l;
+      });
+      onChange(summarize(first));
+    };
+
+    const onDeleted = () => {
+      drawn.current.clearLayers();
+      onChange(undefined);
+    };
+
+    map.on((L as any).Draw.Event.CREATED, onCreated);
+    map.on((L as any).Draw.Event.EDITED, onEdited);
+    map.on((L as any).Draw.Event.DELETED, onDeleted);
+
+    setClearRef(() => {
+      return () => {
+        try {
+          drawn.current.eachLayer((l: any) => {
+            drawn.current.removeLayer(l);
+            if (map.hasLayer(l)) map.removeLayer(l);
+          });
+          drawn.current.clearLayers();
+          (map as any).fire((L as any).Draw.Event.DELETED, {
+            layers: drawn.current,
+          });
+          onChange(undefined);
+        } catch {
+          onChange(undefined);
+        }
+      };
+    });
+
+    return () => {
+      map.off((L as any).Draw.Event.CREATED, onCreated);
+      map.off((L as any).Draw.Event.EDITED, onEdited);
+      map.off((L as any).Draw.Event.DELETED, onDeleted);
+      map.removeControl(control);
+      map.removeLayer(drawn.current);
+    };
+  }, [map, onChange, setClearRef]);
+
+  return null;
+}
+
+// ─────────────────────────────────────────────────────────────
+// MapClient
+// ─────────────────────────────────────────────────────────────
+export default function MapClient({
+  markers = [],
+  fitToMarkers = true,
+  height = "60vh",
+  showAoi = true,
+  initialCenter = [20, 0],
+  initialZoom = 2,
+}: MapClientProps) {
+  const [aoi, setAoi] = useState<AoiSummary | undefined>(undefined);
+  const clearRef = useRef<() => void>(() => {});
+  const [material, setMaterial] = useState("raw earth materials");
+
+  const installClear = useCallback((fn: () => void) => {
+    clearRef.current = fn;
+  }, []);
+
+  useEffect(() => {
+    patchLeafletIcons();
+  }, []);
+
+  // When used in vetting (no AOI), just render the map with markers.
+  const isReadOnly = !showAoi;
+
+  const runReport = () => {
+    try {
+      if (aoi)
+        writeAoiToSession({
+          type: aoi.type,
+          bounds: aoi.bounds,
+          center: aoi.center,
+          vertices: aoi.vertices,
+          geojson: aoi.geojson,
+        });
+      else writeAoiToSession(null);
+    } catch {}
+
+    // Upstream page handles navigation; this component is now reusable.
+    // (We keep this here for Discovery page usage.)
+    if (typeof window !== "undefined") {
+      const seedParts = [material.trim()];
+      if (aoi?.center) {
+        seedParts.push(
+          `AOI ${fmt(aoi.center.lat)}, ${fmt(aoi.center.lon)} (${fmt(
+            aoi.bounds.south
+          )},${fmt(aoi.bounds.west)}–${fmt(aoi.bounds.north)},${fmt(
+            aoi.bounds.east
+          )})`
+        );
+      }
+      const seed = seedParts.join(" — ");
+      window.location.assign(`/loading/?seed=${encodeURIComponent(seed)}`);
+    }
+  };
+
+  return (
+    <div className="relative isolate z-0 grid gap-4">
+      {/* MAP */}
+      <div
+        className="relative z-0 w-full rounded-xl overflow-hidden border border-white/10"
+        style={{ height }}
+      >
+        <MapContainer
+          center={initialCenter}
+          zoom={initialZoom}
+          className="h-full w-full"
+          worldCopyJump
+        >
+          <TileLayer url={DARK_TILE.url} attribution={DARK_TILE.attribution} />
+
+          {/* Discovery-only drawing controls */}
+          {showAoi && (
+            <DrawControls onChange={setAoi} setClearRef={installClear} />
+          )}
+
+          {/* Vetting markers (or any consumer-provided markers) */}
+          {markers?.map((m, i) => (
+            <Marker key={`${m.lat}-${m.lng}-${i}`} position={[m.lat, m.lng]}>
+              {m.label ? <Popup>{m.label}</Popup> : null}
+            </Marker>
+          ))}
+
+          {/* Auto-fit/center for markers */}
+          {markers?.length ? (
+            <FitToMarkers markers={markers} fit={fitToMarkers} />
+          ) : null}
+        </MapContainer>
+      </div>
+
+      {/* AOI panel (Discovery mode only) */}
+      {showAoi && (
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="grid gap-4 md:grid-cols-[1fr_auto] items-end">
+            <div className="min-w-[280px]">
+              <div className="text-sm font-medium text-white/90">Material</div>
+              <input
+                value={material}
+                onChange={(e) => setMaterial(e.target.value)}
+                placeholder='e.g., "cobalt", "diamond", "rare earths"'
+                className="mt-2 w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 outline-none focus:ring-2 focus:ring-cyan-400"
+              />
+              <div className="mt-1 text-xs text-white/50">
+                This seeds the analysis stream. You can type anything.
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 md:justify-end">
+              <button
+                onClick={runReport}
+                className="rounded-lg bg-gradient-to-r from-cyan-400/90 to-emerald-400/90 px-4 py-2 text-black font-semibold hover:from-cyan-300 hover:to-emerald-300 disabled:opacity-50"
+                disabled={!material.trim()}
+              >
+                Run Report with AOI
+              </button>
+              <button
+                onClick={() => {
+                  clearRef.current?.();
+                  writeAoiToSession(null);
+                  setAoi(undefined);
+                }}
+                className="rounded-lg border border-white/20 px-4 py-2 text-white/90 hover:bg-white/10"
+              >
+                Clear AOI
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <div className="text-sm font-medium text-white/90">
+              Selected Area
+            </div>
+            <div className="mt-2 text-sm text-white/60">
+              Use the toolbar on the map to draw a <b>Rectangle</b> or{" "}
+              <b>Polygon</b>. You can edit or delete it after placing.
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
